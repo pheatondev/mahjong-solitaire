@@ -1,6 +1,9 @@
 /* widgets.js — small a11y helpers for overlay widgets (GDD §14.1 view module, §17). */
 
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+/* `a[href]` (not `[href]`): SVG `<use href>` candies (e.g. the four sealed tiles in
+   the fail card, §3.6) carry href too and would match `[href]` — .focus() on a
+   SVGUseElement is a silent no-op and the dialog never received focus (§17). */
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /**
  * Dialog focus trap (§17: dialogs get role="dialog" + focus trap).

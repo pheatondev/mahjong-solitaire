@@ -119,7 +119,12 @@ export const FACE_NAMES = {
 };
 
 export function faceName(face) {
-  if (face === 'drR' || face === 'drG' || face === 'drW') return FACE_NAMES[face];
-  const suit = face[0], rank = Number(face.slice(1));
-  return FACE_NAMES[suit](rank);
+  // Whole-face labels (winds 東南西北, dragons 中發白) are stored as strings; suited
+  // families (d/b/c) are label functions keyed by suit letter.
+  if (typeof FACE_NAMES[face] === 'string') return FACE_NAMES[face];
+  const suit = face?.[0], rank = Number(face?.slice?.(1));
+  const fam = FACE_NAMES[suit];
+  // §17 hardening: an unexpected face degrades to a raw label instead of crashing
+  // refreshFree mid-startLevel (which would strand inputLocked on a dead board).
+  return typeof fam === 'function' ? fam(rank) : String(face ?? 'unknown');
 }

@@ -171,6 +171,11 @@ function goSettingsBack() {
 function goMap() {
   closePause({ silent: true });
   closeDialog();
+  // the win/fail cards' Map button leaves the card context: dismiss both overlays
+  // (they are only hidden by startLevel otherwise — Map used to leave the card
+  //  open above the levels screen)
+  hideOverlay(els.win);
+  hideOverlay(els.fail);
   renderLevelSelect();
   showScreen('levels');
 }
@@ -202,6 +207,20 @@ function hideOverlay(dlg) { // call whenever the topmost dialog fades out
   releaseOverlayFocus?.();
   releaseOverlayFocus = null;
   if (dlg) dlg.classList.remove('open');
+}
+
+/* ---------- §13 install promo: exactly once, on the win card of L3+ ---------- */
+let promoTimer = null;
+function schedulePromo() { // 900 ms so the win card reads first; guard makes a fast
+  // Next inert — the promo re-arms at the next win card instead of interrupting a live deal
+  clearTimeout(promoTimer);
+  promoTimer = setTimeout(() => {
+    promoTimer = null;
+    if (state?.phase !== 'won' || currentScreen !== 'game') return;
+    setProgressFlag('promoShown', true);
+    audio.dialog();
+    showOverlay(els.dlgPromo);
+  }, 900);
 }
 
 /* ---------- boot ---------- */
@@ -322,6 +341,8 @@ function startLevel(lvl, redo, tries = 0) {
   sealRecorded = false;
   wonRecorded = false;
   dialogOpen = false;
+  revealTimerSet = false; // fresh attempt owns its reveal (rapid-bank stale timers can't ghost it)
+  clearTimeout(promoTimer); // Next beat the win-card promo? it shows on the NEXT win card (§13 once)
   currentScreen = 'game';
   showScreen('game');
   view.cancelFlights();
@@ -481,10 +502,25 @@ function onLanded(res, _tile, comboAtTap = 1) {
       .map((b) => `<div class="ftile"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-${b.face}"/></svg></div>`)
       .join('');
     // the 4th tile visibly lands before the fail overlay plays (§3.6 locked)
-    setTimeout(() => showOverlay(els.fail), 120);
+    scheduleReveal(() => showOverlay(els.fail), 120, 'failed');
   } else if (state.phase === 'won') {
-    setTimeout(openWin, 280); // last pair pops first, then ★ reveal (§3.4)
+    scheduleReveal(() => openWin(), 280, 'won'); // last pair pops first, then ★ reveal (§3.4)
   }
+}
+
+/* One reveal timer per attempt: with rapid banking (§3.3 — the fast second tap is
+   valid input) BOTH flights of the winning pair resolve after the phase flips, so the
+   old `setTimeout(openWin, 280)` ran twice — its stale timer fired over the NEXT
+   level's fresh deal and re-opened the win card as a ghost. The fire-time phase guard
+   makes stale timers inert; startLevel resets the flag for the fresh attempt. */
+let revealTimerSet = false;
+function scheduleReveal(reveal, delay, phase) {
+  if (revealTimerSet) return;
+  revealTimerSet = true;
+  setTimeout(() => {
+    revealTimerSet = false;
+    if (state?.phase === phase) reveal(); // stale timer on a fresh deal does nothing
+  }, delay);
 }
 
 /* ---------- overlays (§3.6 fail / §4.2 win) ---------- */
@@ -529,14 +565,8 @@ function openWin() {
   })();
   showOverlay(els.win);
 
-  // §13 mitigation 1: the install promo shows exactly once, after level 3
-  if (level.id === 3 && !getStore().progress.promoShown) {
-    setTimeout(() => {
-      setProgressFlag('promoShown', true);
-      audio.dialog();
-      showOverlay(els.dlgPromo);
-    }, 900);
-  }
+  // §13 mitigation 1: the install promo shows exactly once, on the win card of L3+
+  if (level.id >= 3 && !getStore().progress.promoShown) schedulePromo();
 }
 
 /* ---------- §5.4 Undo ---------- */
