@@ -6,7 +6,7 @@
 | **Genre** | Casual puzzle — mahjong solitaire (tile-matching) |
 | **Platform** | Web (mobile-first), static files on GitHub Pages |
 | **Reference game** | *Mahjong Blast* by Nebula Studio (iOS/Android) |
-| **Doc version** | v0.3.2 — user-feedback amendments: install promo removed (§13), safe-area frame for the stage (§9.1), tighter board fit padding (§14.2); supersedes v0.3.1 playtest ruling: §5.2 best-effort shuffle when the tin holds tiles (odd on-board multiset), constructive guarantee kept for even multisets |
+| **Doc version** | v0.3.3 — user feedback: uniform tile size across all levels. §7.1 cols cap narrowed to exactly 8 and §14.2 fit made level-independent; all 60 layouts re-authored by `scripts/build-levels.mjs` (tile counts, names, hidden curve, §6 bands preserved). Supersedes v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets) |
 | **Date** | 2026-10-23 |
 | **Status** | Implementation-ready — this document is the build contract |
 | **Doc format** | Markdown (`.md`) — human-readable, LLM-readable, renders natively on GitHub |
@@ -366,22 +366,24 @@ Levels are plain **JSON** (fetched at boot; cacheable by the service worker). On
 
 Rules for a valid layout (validated at runtime, console-warn + skip level in dev):
 
-- Every layer's rows are equal length (rectangle `cols × rows`), `8 ≤ cols ≤ 14` (locked — 14 cols × 26 px min tile = 364 px ≤ stage width, so full-deck boards fit; §14.2), `6 ≤ rows ≤ 12`.
+- Every layer's rows are equal length (rectangle `cols × rows`), `cols = 8` (**amended v0.3.3 — uniform tile size**: the §14.2 fit is now level-independent, so every board spans the full usable width `8 × 47.5 = 380 design px`; wide old layouts were re-authored as narrower silhouettes with deeper layered plate stacks — tile counts, names, hidden curve and §6 bands unchanged), `6 ≤ rows ≤ 12`.
 - A tile on layer `L > 0` must sit on top of a tile footprint at the same `(col,row)` on layer `L-1` (no floating tiles — keeps rendering and blocking logic trivial).
 - Total tiles is **even** (pairs).
 - `hidden` must satisfy `0 ≤ hidden ≤ floor(tiles / 4)` (≤ 25% fog share) and — for teaching pacing — `hidden = 0` for levels 1–12.
 
 ### 7.2 Reserved shapes
 
-~12 base shapes cover all 60 levels (re-dealt per level, with column/row padding to scale size):
+Base shapes cover all 60 levels — re-authored by `scripts/build-levels.mjs` (v0.3.3: all boards exactly 8 cols so the §14.2 tile size is uniform; depth comes from nested plate stacks on solid rows). The shape families still span:
 
 | Shape tag | Use | Footprint |
 |---|---|---|
 | `Pebble` | L1–3 | small oval |
 | `Ring` | L4–6 | donut |
-| `Wall` | L7–12 | 4-wide full wall + center stack |
-| `Pyramid` | L13–24 | 2-layer step pyramid |
-| `Cross`, `Butterfly`, `Heart`, `Castle`, `Tunnel`, `Cat`, `Flower`, `Turtle` | L13–60 | classic mahjong-style silhouettes |
+| `Wall` | L7–12 | full-width wall + 6-wide center stack |
+| `Cross`, `Heart`, `Castle`, `Tunnel`, `Cat`, `Flower` | L13–60 | classic mahjong-style silhouettes |
+| `Slab/-stack`, `Tunnel-frame`, `Bug` | L13–60 | rectangular bodies with stacked plate ladders / 8-wide shell finale |
+
+(The pre-reshape `Pyramid`/`Butterfly`/`Turtle` families folded into the slab-stack and tunnel-family equivalents; the shape-silhouette check tests §7.1 rules, not per-chapter shape identity.)
 
 Two sample maps (see appendix-style blocks below) ship in the doc so the prototype can start immediately. Pebble is **M1's test layout (§20)**; glyph letters mark **footprints only** — faces deal at runtime (§8). Pyramid is an *illustrative sketch* (row counts approximate — the build agent authors final maps and runs the §7.1 validator):
 
@@ -479,7 +481,7 @@ Notes: the free-check must use the *same* §3.1 predicate as gameplay — never 
 
 - **Portrait phones:** native fit — the intended primary case.
 - **Tablets / laptops / desktop:** fully playable, first-class letterbox — the stage centers on the screen and the full-bleed background sky fills the sides. Scale follows §9.1 (capped at 2×).
-- **Landscape phones:** playable *without* a rotate gate — the stage scales to fit the viewport height (the binding dimension), staying centered. On phones this produces a small stage (~0.4–0.5× → the 26 px min-tile floor becomes ~12–16 physical px), so a **dismissible, never-blocking hint** appears once per session here only: *"Portrait is comfier 🍬 — rotate anytime"*. It never pauses or gates gameplay (rotating back to portrait re-fits automatically the usual way).
+- **Landscape phones:** playable *without* a rotate gate — the stage scales to fit the viewport height (the binding dimension), staying centered. On phones this produces a small stage (~0.4–0.5× → the uniform ~47.5 px design tile becomes ~19–24 physical px), so a **dismissible, never-blocking hint** appears once per session here only: *"Portrait is comfier 🍬 — rotate anytime"*. It never pauses or gates gameplay (rotating back to portrait re-fits automatically the usual way).
 - **Desktop input niceties:** everything runs on Pointer Events, so mouse taps work identically; tappables get `cursor: pointer` + a light hover lift; no scroll-wheel behavior (the page never scrolls). (Keyboard shortcuts were cut from v1 — locked.)
 - **No orientation-specific layouts exist.** There is no landscape HUD, no side-panels, no board re-flow: supporting desktop/landscape is exactly §9.1's letterbox math — that's the whole change of scope.
 
@@ -721,7 +723,7 @@ mahjong-lite/
 ### 14.2 Rendering approach (DOM tiles)
 
 - Each tile = one `div.tile` with `transform: translate3d(x, y, 0)`, `z-index = 100 + layer×10` (ties within a layer are harmless — full-overlap alignment means no intra-layer overlap); side/cover relationships are pure arithmetic.
-- **Fit calculation:** board bounding box `(cols×T, rows×T + (maxLayer−1)×0)` — v1 has no per-layer offsets (full-overlap alignment), so board height is `rows × T`; `T = clamp(min(stageW_avail/cols, stageH_avail/rows), 26, 72)` (locked 26 px floor ↔ the ≤14-col cap, §7.1: 14 × 26 = 364 px ≤ stage width). Board container centers horizontally, sits under the HUD. **Amended v0.3.2 (user feedback "tiles too small to tap"):** the per-side padding reserved around the board dropped from 12 px to **5 px** — width is the binding constraint on every wide board, so this lifts e.g. 14-col boards from ~26.1 px to ~27.1 px per tile; the 26 px floor stays (touching tiles must never exceed the stage width). The §17 hit-target generosity on top of `T` remains the main tap-affordance.
+- **Fit calculation (amended v0.3.3 — uniform tile size, user feedback "tiles shrink as levels progress"):** `T = clamp(min(availW / 8, availH / 12), 26, 72)` — the fit depends only on the board area, never on the level's own cols/rows, so **every level renders at the identical tile size** (≈47.5 design px at the 390×844 stage with 5 px side padding). This is what the §7.1 cols cap of exactly 8 guarantees: 8 × 47.5 = 380 px of usable width; 12 rows × 47.5 = 570 px of board height (§9.1 safe-area frame subtracts insets before this math). Previously (≤ v0.3.2) `T` ranged from ~26 px on 14-col boards up to ~47 px on pebbles. The §17 hit-target generosity on top of `T` remains the main tap-affordance.
 - Visual overlap transparency: layer-1+ tiles draw a 1.5 px darker seam + stronger drop shadow so stacking reads clearly at small tile sizes.
 - **Match pops happen in the bank** (the twin pair's two slots): animate the two slot tiles (scale+fade+confetti), then clear. Board-side, a tapped tile's cell is freed **logically at tap time** — free-checks see it gone instantly; the flight to the bank is cosmetic and non-blocking. Targeted re-z updates only — never re-render all 136 nodes for one move.
 
@@ -827,7 +829,7 @@ Parked by the v1 decision round (in rough priority order):
 | Face-down backs read confusingly on dense stacked boards | Medium | Strong face/back contrast, mid-flip face-swap animation, levels 13–24 start with only 1–2 flipped tiles; playtest check in M4 |
 | Bank seal fail feels harsh for the senior-friendly audience | Medium | Free unlimited instant restart, gentle copy, pre-seal warning tint at 3 faces, undo-first affordance in the no-progress dialog; playtest knob to trial the mercy-undo variant (§3.6) |
 | Landscape-phone stages are small (height-bound scale ~0.4×, tiles ≈13–16 physical px) | Low (niche case) | Dismissible once-per-session portrait hint; landscape-mobile never blocks play; desktop/tablet/laptop are the sanctioned big-screen surfaces; playtest check in M4 that the hint copy reads as advice, not nagging |
-| Layered boards read poorly at small tile sizes | Medium | Seam+shadow depth tokens, min-size clamp 26 px (with ≤14-col layouts, §7.1), layouts padded to fit (§14.2) |
+| Layered boards read poorly at small tile sizes | Medium | Seam+shadow depth tokens, uniform tile size ≈47.5 px (v0.3.3, §14.2) — larger than the pre-reshape worst case and identical on every level |
 | Solver timeouts on dense boards | Low | Node budget + greedy heuristics; boards ≤ 136; generation-window retry |
 | iOS audio unlock/autoplay quirks | Low | Unlock on first gesture; recipes pure WebAudio; test on real device |
 | GitHub Pages subpath breakage (absolute paths) | Medium | Relative paths only; smoke-test deployed URL pre-release |

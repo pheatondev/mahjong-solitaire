@@ -4,6 +4,7 @@
    cosmetic and non-blocking (§14.2 locked ruling). */
 
 import { clamp } from '../util.js';
+import { SCHEMA } from '../data/levels.js';
 import { faceName } from '../data/i18n.js';
 
 const KEY_CLASS = { d: 'key-d', b: 'key-b', c: 'key-c', w: 'key-w', drR: 'key-drR', drG: 'key-drG', drW: 'key-drW' };
@@ -11,15 +12,15 @@ const keyClass = (face) => KEY_CLASS[face.startsWith('dr') ? face.slice(0, 3) : 
 
 const svgFace = (face) => `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-${face}"/></svg><i class="chip"></i>`;
 
-/** Fit formula (§14.2, v0.3.2): T = clamp(min(availW/cols, availH/rows), 26, 72).
- *  User-feedback v0.3.2: tighter side padding (12 → 5) so wide boards get larger
- *  tiles — 14 cols now fit at ~27.1px instead of ~26.1px; width remains the
- *  binding constraint, height has generous slack. */
+/** Fit formula (§14.2, v0.3.3): uniform tile size across ALL levels —
+ *  T = clamp(min(availW/colsMax, availH/rowsMax), 26, 72). The value depends on
+ *  the board area only, never on the level's own cols/rows, so every layout
+ *  renders at the identical size (≈47.5 design px at the 390×844 stage). */
 export function computeFit(areaEl, cols, rows) {
   const pad = 5;
   const aw = areaEl.clientWidth - pad * 2;
   const ah = areaEl.clientHeight - pad * 2;
-  return clamp(Math.min(aw / cols, ah / rows), 26, 72);
+  return clamp(Math.min(aw / SCHEMA.colsMax, ah / SCHEMA.rowsMax), 26, 72);
 }
 
 /** Create the DOM board view. */

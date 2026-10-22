@@ -5,7 +5,7 @@
 
 export const SCHEMA = {
   colsMin: 8,
-  colsMax: 14, // locked: 14 × 26 px min tile = 364 px ≤ stage width (§7.1/§14.2)
+  colsMax: 8, // unlocked v0.3.3: uniform tile size — T = availW/8 (≈47.5 design px) for EVERY level (§14.2)
   rowsMin: 6,
   rowsMax: 12,
 };
