@@ -1,0 +1,15 @@
+/* Mahjong Lite — themes.css
+   Palette tokens (GDD §10.2) + the data-theme hook. v1 ships ONLY "bubblegum"
+   (Bubblegum Beach §10.4); the hook exists so later themes are pure data additions. */
+
+:root,
+body[data-theme="bubblegum"] {
+  --bg-top: #ffd9e8;      /* background gradient top */
+  --bg-bottom: #ffadc6;   /* background gradient bottom */
+  --accent: #ff5d8f;      /* chapter/HUD/particles accent */
+  --tile-face: #fffdf7;   /* ivory icing */
+  --tile-edge: #f3e2c9;   /* tile side/edge tone */
+  --tile-bone: #d9c2a4;   /* extruded bottom edge (from the §11 specimen shell) */
+  --ink: #4a2b3a;         /* plum-brown text */
+  --good: #59c96f;        /* success states only */
+}

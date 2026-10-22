@@ -1,0 +1,23 @@
+{
+  "chapter": "Melon",
+  "accent": "#ff5d8f",
+  "levels": [
+    {
+      "id": 1,
+      "name": "First Pops",
+      "t2": null,
+      "t3": null,
+      "hidden": 0,
+      "layers": [
+        [
+          "..........",
+          "....AA....",
+          "..AAAAAA..",
+          "..AAAAAA..",
+          "....AA....",
+          ".........."
+        ]
+      ]
+    }
+  ]
+}

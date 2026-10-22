@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- Mahjong Lite — v1 M1 (rules core). No build step: what's in the repo is what's deployed (§2.1).
+     Serve over HTTP (`python -m http.server`) — ES modules + level fetches never work from file:// (§14.1). -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- No external requests at runtime (§22); inline SVG faces + inline styles need 'unsafe-inline' styles. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+  <!-- viewport-fit=cover for safe areas (§9.1); user-scalable=no kills double-tap zoom (§16 locked). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#ff5d8f">
+  <title>Mahjong Lite</title>
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/anim.css">
+</head>
+<body data-theme="bubblegum">
+  <div id="bg" aria-hidden="true"></div>
+
+  <!-- The locked 9:16 stage (§9.1): all layout math is 390×844 design px, uniformly scaled. -->
+  <div id="stage">
+    <header id="hud">
+      <span id="chip">Melon · L1</span>
+      <div id="hud-right">
+        <span id="stars" aria-label="Live star projection"></span>
+        <span id="score">0</span>
+      </div>
+    </header>
+
+    <!-- The tin: 4 slots, top HUD zone (§3.3/§9.4). Banked slots are a dead zone (§9.5 locked). -->
+    <div id="bank" aria-label="Bank">
+      <div class="slot" data-slot="0"></div>
+      <div class="slot" data-slot="1"></div>
+      <div class="slot" data-slot="2"></div>
+      <div class="slot" data-slot="3"></div>
+    </div>
+
+    <div id="combo" aria-hidden="true"></div>
+
+    <main id="board">
+      <div id="grid"></div>
+    </main>
+
+    <footer id="bar">
+      <!-- M1: reshuffle the rules loop + free fresh-deal Restart (§3.6). Undo/Shuffle/Hint are M2. -->
+      <button id="btn-restart" class="btn wide">↻ Restart</button>
+    </footer>
+
+    <div id="fx" aria-hidden="true"></div>
+
+    <div id="ovl-win" class="overlay" role="dialog" aria-modal="true" aria-labelledby="win-title">
+      <div class="panel">
+        <h2 id="win-title"></h2>
+        <div id="win-stars">
+          <span class="st">★</span><span class="st">★</span><span class="st">★</span>
+        </div>
+        <div id="win-score">0</div>
+        <div class="bigbtns"><button id="btn-replay" class="btn wide"></button><button id="btn-restart2" class="btn wide"></button></div>
+      </div>
+    </div>
+
+    <div id="ovl-fail" class="overlay" role="dialog" aria-modal="true" aria-labelledby="fail-title">
+      <div class="panel">
+        <h2 id="fail-title"></h2>
+        <div class="bigbtns"><button id="btn-fail-restart" class="btn wide"></button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tile face sprite (§11): ALL faces are inline SVG symbols — zero raster assets, no extra requests.
+      Standard 136-tile deck only; decorative flowers/seasons symbols ship for backlog variants (§11). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <radialGradient id="gdot" cx="0.35" cy="0.3" r="1">
+        <stop offset="0" stop-color="#9ed6ff"/><stop offset="0.55" stop-color="#3f9bea"/><stop offset="1" stop-color="#1f74c0"/>
+      </radialGradient>
+      <linearGradient id="gbam" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#7fe3a0"/><stop offset="1" stop-color="#2fa55e"/>
+      </linearGradient>
+      <!-- bamboo stick primitive (reused by tile-b*) -->
+      <g id="bam-stick">
+        <rect x="-3.5" y="-14" width="7" height="28" rx="3.5" fill="url(#gbam)"/>
+        <rect x="-3.5" y="-4" width="7" height="1.6" fill="#17692f" opacity=".35"/>
+        <rect x="-3.5" y="2.5" width="7" height="1.6" fill="#17692f" opacity=".35"/>
+      </g>
+    </defs>
+
+    <!-- Dots 1–9 — rank-count candy dots, rank-4 = clover arrangement (§11). Keyline blue #4aa3ff. -->
+    <symbol id="tile-d1" viewBox="0 0 100 100"><circle cx="50" cy="50" r="15" fill="url(#gdot)"/><circle cx="45.8" cy="44.9" r="4.5" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d2" viewBox="0 0 100 100"><circle cx="50" cy="27" r="13" fill="url(#gdot)"/><circle cx="46.4" cy="22.6" r="3.9" fill="#fff" opacity=".7"/><circle cx="50" cy="73" r="13" fill="url(#gdot)"/><circle cx="46.4" cy="68.6" r="3.9" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d3" viewBox="0 0 100 100"><circle cx="30" cy="30" r="11" fill="url(#gdot)"/><circle cx="26.9" cy="26.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="50" cy="50" r="11" fill="url(#gdot)"/><circle cx="46.9" cy="46.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="70" cy="70" r="11" fill="url(#gdot)"/><circle cx="66.9" cy="66.3" r="3.3" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d4" viewBox="0 0 100 100"><circle cx="30" cy="30" r="11" fill="url(#gdot)"/><circle cx="26.9" cy="26.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="70" cy="30" r="11" fill="url(#gdot)"/><circle cx="66.9" cy="26.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="30" cy="70" r="11" fill="url(#gdot)"/><circle cx="26.9" cy="66.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="70" cy="70" r="11" fill="url(#gdot)"/><circle cx="66.9" cy="66.3" r="3.3" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d5" viewBox="0 0 100 100"><circle cx="30" cy="30" r="10" fill="url(#gdot)"/><circle cx="27.2" cy="26.6" r="3" fill="#fff" opacity=".7"/><circle cx="70" cy="30" r="10" fill="url(#gdot)"/><circle cx="67.2" cy="26.6" r="3" fill="#fff" opacity=".7"/><circle cx="50" cy="50" r="10" fill="url(#gdot)"/><circle cx="47.2" cy="46.6" r="3" fill="#fff" opacity=".7"/><circle cx="30" cy="70" r="10" fill="url(#gdot)"/><circle cx="27.2" cy="66.6" r="3" fill="#fff" opacity=".7"/><circle cx="70" cy="70" r="10" fill="url(#gdot)"/><circle cx="67.2" cy="66.6" r="3" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d6" viewBox="0 0 100 100"><circle cx="30" cy="22" r="11" fill="url(#gdot)"/><circle cx="26.9" cy="18.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="70" cy="22" r="11" fill="url(#gdot)"/><circle cx="66.9" cy="18.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="30" cy="50" r="11" fill="url(#gdot)"/><circle cx="26.9" cy="46.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="70" cy="50" r="11" fill="url(#gdot)"/><circle cx="66.9" cy="46.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="30" cy="78" r="11" fill="url(#gdot)"/><circle cx="26.9" cy="74.3" r="3.3" fill="#fff" opacity=".7"/><circle cx="70" cy="78" r="11" fill="url(#gdot)"/><circle cx="66.9" cy="74.3" r="3.3" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d7" viewBox="0 0 100 100"><circle cx="28" cy="26" r="9.5" fill="url(#gdot)"/><circle cx="25.3" cy="22.8" r="2.9" fill="#fff" opacity=".7"/><circle cx="50" cy="26" r="9.5" fill="url(#gdot)"/><circle cx="47.3" cy="22.8" r="2.9" fill="#fff" opacity=".7"/><circle cx="72" cy="26" r="9.5" fill="url(#gdot)"/><circle cx="69.3" cy="22.8" r="2.9" fill="#fff" opacity=".7"/><circle cx="38" cy="52" r="9.5" fill="url(#gdot)"/><circle cx="35.3" cy="48.8" r="2.9" fill="#fff" opacity=".7"/><circle cx="62" cy="52" r="9.5" fill="url(#gdot)"/><circle cx="59.3" cy="48.8" r="2.9" fill="#fff" opacity=".7"/><circle cx="28" cy="76" r="9.5" fill="url(#gdot)"/><circle cx="25.3" cy="72.8" r="2.9" fill="#fff" opacity=".7"/><circle cx="72" cy="76" r="9.5" fill="url(#gdot)"/><circle cx="69.3" cy="72.8" r="2.9" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d8" viewBox="0 0 100 100"><circle cx="30" cy="20" r="9" fill="url(#gdot)"/><circle cx="27.5" cy="16.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="70" cy="20" r="9" fill="url(#gdot)"/><circle cx="67.5" cy="16.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="30" cy="40" r="9" fill="url(#gdot)"/><circle cx="27.5" cy="36.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="70" cy="40" r="9" fill="url(#gdot)"/><circle cx="67.5" cy="36.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="30" cy="60" r="9" fill="url(#gdot)"/><circle cx="27.5" cy="56.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="70" cy="60" r="9" fill="url(#gdot)"/><circle cx="67.5" cy="56.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="30" cy="80" r="9" fill="url(#gdot)"/><circle cx="27.5" cy="76.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="70" cy="80" r="9" fill="url(#gdot)"/><circle cx="67.5" cy="76.9" r="2.7" fill="#fff" opacity=".7"/></symbol>
+    <symbol id="tile-d9" viewBox="0 0 100 100"><circle cx="28" cy="25" r="9" fill="url(#gdot)"/><circle cx="25.5" cy="21.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="50" cy="25" r="9" fill="url(#gdot)"/><circle cx="47.5" cy="21.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="72" cy="25" r="9" fill="url(#gdot)"/><circle cx="69.5" cy="21.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="28" cy="50" r="9" fill="url(#gdot)"/><circle cx="25.5" cy="46.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="50" cy="50" r="9" fill="url(#gdot)"/><circle cx="47.5" cy="46.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="72" cy="50" r="9" fill="url(#gdot)"/><circle cx="69.5" cy="46.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="28" cy="75" r="9" fill="url(#gdot)"/><circle cx="25.5" cy="71.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="50" cy="75" r="9" fill="url(#gdot)"/><circle cx="47.5" cy="71.9" r="2.7" fill="#fff" opacity=".7"/><circle cx="72" cy="75" r="9" fill="url(#gdot)"/><circle cx="69.5" cy="71.9" r="2.7" fill="#fff" opacity=".7"/></symbol>
+
+    <!-- Bamboo 1–9 — rounded sticks; rank-1 = tiny bird emoji (§11). Keyline green #3ec46d. -->
+    <symbol id="tile-b1" viewBox="0 0 100 100"><text x="50" y="66" font-size="46" text-anchor="middle">🐦</text></symbol>
+    <symbol id="tile-b2" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(50,32)"/><use href="#bam-stick" transform="translate(50,68)"/></symbol>
+    <symbol id="tile-b3" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(50,30) rotate(25)"/><use href="#bam-stick" transform="translate(32,72)"/><use href="#bam-stick" transform="translate(68,72)"/></symbol>
+    <symbol id="tile-b4" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(35,30)"/><use href="#bam-stick" transform="translate(65,30)"/><use href="#bam-stick" transform="translate(35,70)"/><use href="#bam-stick" transform="translate(65,70)"/></symbol>
+    <symbol id="tile-b5" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(30,32) rotate(35)"/><use href="#bam-stick" transform="translate(70,32) rotate(-35)"/><use href="#bam-stick" transform="translate(30,68) rotate(-35)"/><use href="#bam-stick" transform="translate(70,68) rotate(35)"/><use href="#bam-stick" transform="translate(50,50)"/></symbol>
+    <symbol id="tile-b6" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(32,26)"/><use href="#bam-stick" transform="translate(50,26)"/><use href="#bam-stick" transform="translate(68,26)"/><use href="#bam-stick" transform="translate(32,70)"/><use href="#bam-stick" transform="translate(50,70)"/><use href="#bam-stick" transform="translate(68,74) rotate(90)"/></symbol>
+    <symbol id="tile-b7" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(50,20) rotate(90)"/><use href="#bam-stick" transform="translate(28,48)"/><use href="#bam-stick" transform="translate(50,48)"/><use href="#bam-stick" transform="translate(72,48)"/><use href="#bam-stick" transform="translate(28,80)"/><use href="#bam-stick" transform="translate(50,80)"/><use href="#bam-stick" transform="translate(72,80)"/></symbol>
+    <symbol id="tile-b8" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(36,22)"/><use href="#bam-stick" transform="translate(64,22)"/><use href="#bam-stick" transform="translate(36,42)"/><use href="#bam-stick" transform="translate(64,42)"/><use href="#bam-stick" transform="translate(36,62)"/><use href="#bam-stick" transform="translate(64,62)"/><use href="#bam-stick" transform="translate(36,82)"/><use href="#bam-stick" transform="translate(64,82)"/></symbol>
+    <symbol id="tile-b9" viewBox="0 0 100 100"><use href="#bam-stick" transform="translate(28,22)"/><use href="#bam-stick" transform="translate(50,22)"/><use href="#bam-stick" transform="translate(72,22)"/><use href="#bam-stick" transform="translate(28,50)"/><use href="#bam-stick" transform="translate(50,50)"/><use href="#bam-stick" transform="translate(72,50)"/><use href="#bam-stick" transform="translate(28,78)"/><use href="#bam-stick" transform="translate(50,78)"/><use href="#bam-stick" transform="translate(72,78)"/></symbol>
+
+    <!-- Characters 1–9 — Chinese numerals 一–九 over 萬, red glyph style (§11). Keyline red #ff4d4d. -->
+    <symbol id="tile-c1" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">一</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c2" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">二</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c3" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">三</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c4" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">四</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c5" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">五</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c6" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">六</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c7" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">七</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c8" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">八</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+    <symbol id="tile-c9" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">九</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
+
+    <!-- Winds — letter tile + compass needle (§11). Keyline indigo #7a5cff (one glaze row for winds). -->
+    <symbol id="tile-wE" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">E</text></symbol>
+    <symbol id="tile-wS" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">S</text></symbol>
+    <symbol id="tile-wW" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">W</text></symbol>
+    <symbol id="tile-wN" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">N</text></symbol>
+
+    <!-- Dragons — Red 中, Green 發, White empty blue-lined frame (§11). -->
+    <symbol id="tile-drR" viewBox="0 0 100 100"><rect x="22" y="22" width="56" height="56" rx="6" fill="none" stroke="#ff4d4d" stroke-width="5"/><text x="50" y="68" font-size="46" font-weight="700" text-anchor="middle" fill="#ff4d4d">中</text></symbol>
+    <symbol id="tile-drG" viewBox="0 0 100 100"><rect x="22" y="22" width="56" height="56" rx="6" fill="none" stroke="#3ec46d" stroke-width="5"/><text x="50" y="68" font-size="46" font-weight="700" text-anchor="middle" fill="#3ec46d">發</text></symbol>
+    <symbol id="tile-drW" viewBox="0 0 100 100"><rect x="22" y="22" width="56" height="56" rx="6" fill="none" stroke="#8fd7ff" stroke-width="5"/></symbol>
+  </svg>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

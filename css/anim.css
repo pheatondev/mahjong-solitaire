@@ -1,0 +1,57 @@
+/* Mahjong Lite — anim.css
+   Keyframes + reduce-motion variants (§9.5: prefs-reduced-motion / in-game toggle flattens
+   to opacity-only; nothing exceeds 400 ms except the sanctioned 350 ms bank flight). */
+
+@keyframes tile-jiggle {
+  0%, 100% { transform: translate3d(var(--tx), var(--ty), 0); filter: brightness(1); }
+  30%      { transform: translate3d(var(--tx), var(--ty), 0) rotate(-3deg); filter: brightness(0.7); }
+  60%      { transform: translate3d(var(--tx), var(--ty), 0) rotate(2.5deg); }
+}
+@keyframes tile-pop {
+  0%   { transform: translate3d(var(--tx), var(--ty), 0) scale(1); opacity: 1; }
+  40%  { transform: translate3d(var(--tx), var(--ty), 0) scale(1.25); opacity: 1; }
+  100% { transform: translate3d(var(--tx), var(--ty), 0) scale(1.25); opacity: 0; }
+}
+@keyframes mini-land {
+  0%   { transform: scale(0.86); }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(0.78); } /* occupied slot shows mini tile at 78% (§9.5) */
+}
+@keyframes slot-pop {
+  0%   { transform: scale(0.78) translateY(0); opacity: 1; }
+  30%  { transform: scale(1.05) translateY(-6px); opacity: 1; }
+  100% { transform: scale(0.78) translateY(8px); opacity: 0; }
+}
+@keyframes fly-arc {
+  0%   { translate: 0 0; }
+  50%  { translate: 0 -44px; } /* arc apex: flight rises then settles into the tin */
+  100% { translate: 0 0; }
+}
+@keyframes board-shimmer {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.9; }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes star-in {
+  from { transform: scale(0.2) rotate(-40deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes combo-pop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  15%  { opacity: 1; transform: scale(1.15); }
+  30%  { transform: scale(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Popping bank minis (emptying slots after a match) reuse slot-pop at mini scale —
+   JS toggles .popping on the .mini so the base .78 occupied scale animates away. */
+.mini.popping { animation: slot-pop 260ms ease-out forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flight, .flight > svg { animation: none !important; transition: opacity 200ms !important; }
+  .tile.deny { animation: none !important; filter: brightness(0.7); }
+}

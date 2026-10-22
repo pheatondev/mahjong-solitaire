@@ -1,0 +1,48 @@
+/* Mahjong Lite — base.css
+   Reset + the locked 9:16 stage system (GDD §9.1/§9.2) + full-bleed background. */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --stage-w: 390px;
+  --stage-h: 844px;
+  --scale: 1;
+}
+
+html, body { height: 100%; }
+
+body {
+  overflow: hidden;
+  font-family: -apple-system, "SF Pro Rounded", ui-rounded, "Segoe UI", Roboto, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg-bottom); /* overscroll never flashes white */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* Full-bleed themed sky — fills the whole screen, letterboxing included (§9.1). */
+#bg {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+/* The locked stage: 390 × 844 design px, centered, uniformly scaled. */
+#stage {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  transform: translate(-50%, -50%) scale(var(--scale));
+  display: flex;
+  flex-direction: column;
+  contain: layout style;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
