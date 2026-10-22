@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>capture</title></head>
+<body style="margin:0;background:#ffffff">
+<div id="wrap" style="position:absolute;top:0;left:0;transform-origin:0 0"></div>
+<script>
+  const F = new URLSearchParams(location.search).get('f');
+  fetch(F).then(r => r.text()).then(t => {
+    const wrap = document.getElementById('wrap');
+    wrap.innerHTML = t;
+    const svg = wrap.querySelector('svg');
+    const W = +svg.getAttribute('width') || 390;
+    const H = +svg.getAttribute('height') || 844;
+    const s = Math.min(1, window.innerWidth / W, window.innerHeight / H);
+    wrap.style.transform = 'scale(' + s + ')';
+    document.title = 'ready';
+  });
+</script>
+</body>
+</html>
