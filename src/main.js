@@ -1,8 +1,8 @@
 /* main.js — boot + composition root: stage fit (§9.1), game clock (§4.1/§16),
-   screen manager (§14.3 M2 slice: LEVELS ⇄ GAME), the tap ledger (§3.3/§3.5),
-   boosters (§5.1–5.4), the §8.2 generation backstop, and §13 persistence wiring.
-   Sudoku-free: all rule math lives in core/ — this file only orchestrates.
-   Audio / pause panel / themes / install promo are M3–M4. */
+   screen manager (§14.3 M3: HOME · LEVELS · GAME · STATS · SETTINGS), the tap
+   ledger (§3.3/§3.5), boosters (§5.1–5.4), the §8.2 generation backstop, and
+   §13 persistence wiring. All rule math lives in core/ — this file only
+   orchestrates; audio/confetti are side effects, never logic. */
 
 import { clamp } from './util.js';
 import {
@@ -16,17 +16,27 @@ import { parseChapter } from './data/levels.js';
 import { STR } from './data/i18n.js';
 import {
   initStore, setBrokenToastHandler, getStore, markPlayed, recordPop, recordSeal, recordWin,
+  setSetting, setProgressFlag, totalStars, resetProgress,
 } from './data/store.js';
 import { createBoardView, createBankView, computeFit } from './view/board-render.js';
 import { createLevelSelect } from './view/level-select.js';
+import { createAudio } from './view/audio.js';
+import { createFx } from './view/fx.js';
+import { createHomeScr } from './view/screens/home.js';
+import { createStatsScr } from './view/screens/stats.js';
+import { createSettingsScr } from './view/screens/settings.js';
 
 const $ = (s) => document.querySelector(s);
 const els = {
   stage: $('#stage'), scrLevels: $('#scr-levels'), scrGame: $('#scr-game'),
+  scrHome: $('#scr-home'), scrStats: $('#scr-stats'), scrSettings: $('#scr-settings'),
+  fx: $('#fx'),
   lvlScroll: $('#lvl-scroll'), lvlTitle: $('#lvl-title'),
   bank: $('#bank'), board: $('#board'), grid: $('#grid'),
   chip: $('#chip'), score: $('#score'), stars: $('#stars'), combo: $('#combo'),
   win: $('#ovl-win'), fail: $('#ovl-fail'), dlg: $('#dlg-nopro'), toast: $('#toast'),
+  dlgPause: $('#dlg-pause'), dlgPromo: $('#dlg-promo'), dlgReset: $('#dlg-reset'),
+  tip: $('#tip'), winBest: $('#win-best'), failBody: $('#fail-body'), failTiles: $('#fail-tiles'),
 };
 
 /* ---------- module state ---------- */
@@ -46,10 +56,29 @@ let hintLast = 0;
 let sealRecorded = false;
 let wonRecorded = false;
 
+/* ---------- M3: audio (§12), confetti (§16/§17), pause, screens ---------- */
+let paused = false; // §9.4 pause panel: player-initiated only
+let settingsReturn = 'home'; // settings can be reached from Home or the pause panel
+let resetArmed = false; // §13 double-confirm
+let installEvent = null; // captured beforeinstallprompt for the promo CTA
+let homeScr = null;
+let statsScr = null;
+let settingsScr = null;
+
+addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); // never let the UA fire its own UI; the promo owns it (§13)
+  installEvent = e;
+});
+
 let view, bank;
 view = createBoardView(els.grid, els.board);
 bank = createBankView(els.bank);
 const levelSelect = createLevelSelect(els.lvlScroll, els.lvlTitle, (lvl) => startLevel(lvl, 0));
+const audio = createAudio(() => getStore()?.settings?.sfx ?? true);
+const fxr = createFx(els.fx, () => getStore()?.settings?.reduceMotion ?? false);
+
+// §12: the AudioContext unlocks on the very first user gesture, whatever it hits
+document.addEventListener('pointerdown', () => audio.unlock(), { once: true, capture: true });
 
 /* ---------- §9.1 locked stage fit ---------- */
 function fitStage() {
@@ -64,11 +93,12 @@ visualViewport?.addEventListener('resize', fitStage);
 fitStage();
 
 /* ---------- game clock: game-time for the invisible combo window (§4.1) ----------
-   rAF naturally stops when the tab is hidden (§16: clock freezes; no pause panel). */
+   rAF naturally stops when the tab is hidden (§16: clock freezes; no pause UI).
+   The pause panel (§9.4) freezes game-time the same way — visuals keep breathing. */
 let gameTime = 0;
 let lastStamp = performance.now();
 function tick(t) {
-  gameTime += Math.min(t - lastStamp, 100);
+  if (!paused) gameTime += Math.min(t - lastStamp, 100);
   lastStamp = t;
   requestAnimationFrame(tick);
 }
@@ -98,14 +128,47 @@ function snapScore() { // undo/restore: display snaps, no spring
   renderStars();
 }
 
-/* ---------- screen manager (§14.3) ---------- */
+/* ---------- screen manager (§14.3 M3: five screens) ---------- */
 function showScreen(name) {
   currentScreen = name;
   els.scrLevels.classList.toggle('hidden', name !== 'levels');
   els.scrGame.classList.toggle('hidden', name !== 'game');
+  els.scrHome.classList.toggle('hidden', name !== 'home');
+  els.scrStats.classList.toggle('hidden', name !== 'stats');
+  els.scrSettings.classList.toggle('hidden', name !== 'settings');
+}
+
+function goHome() {
+  closePause({ silent: true });
+  closeDialogUIOnly();
+  showScreen('home');
+  homeScr?.show();
+  audio.jingle(); // no-op until audio is unlocked (§12)
+}
+
+function goStats() {
+  statsScr.refresh();
+  showScreen('stats');
+}
+
+/** Settings is reachable from Home (return 'home') or a paused game ('pause'). */
+function goSettings(returnTo = 'home') {
+  settingsReturn = returnTo;
+  settingsScr.refresh();
+  showScreen('settings');
+}
+
+function goSettingsBack() {
+  if (settingsReturn === 'pause' && state?.phase === 'playing') {
+    showScreen('game');
+    els.dlgPause.classList.add('open'); // the paused game is still underneath
+  } else {
+    goHome();
+  }
 }
 
 function goMap() {
+  closePause({ silent: true });
   closeDialog();
   renderLevelSelect();
   showScreen('levels');
@@ -131,6 +194,17 @@ function showToast(msg) {
 async function boot() {
   setBrokenToastHandler(() => showToast(STR.saveToast)); // §13 one-time toast — before initStore
   initStore();
+  syncBodyClasses(); // reduce-motion / highlight-off from the persisted settings
+
+  // M3 screens — built after the store exists (their refresh() reads it)
+  homeScr = createHomeScr(els.scrHome, {
+    play: playFrontier,
+    levels: () => { renderLevelSelect(); showScreen('levels'); },
+    stats: goStats,
+    settings: () => goSettings('home'),
+  });
+  statsScr = createStatsScr(els.scrStats, goHome);
+  settingsScr = createSettingsScr(els.scrSettings, onSettingChange, openResetDialog, goSettingsBack);
 
   // static overlay/dialog copy (i18n)
   els.win.querySelector('h2').textContent = STR.winTitle;
@@ -138,6 +212,7 @@ async function boot() {
   $('#btn-next').textContent = STR.next(2);
   $('#btn-map2').textContent = STR.map;
   els.fail.querySelector('h2').textContent = STR.failTitle;
+  els.failBody.textContent = STR.failBody;
   $('#btn-fail-restart').textContent = STR.restart;
   $('#btn-fail-map').textContent = STR.map;
   $('#nopro-title').textContent = STR.noProgTitle;
@@ -146,6 +221,19 @@ async function boot() {
   $('#btn-dlg-undo').textContent = STR.dlgUndo;
   $('#btn-dlg-restart').textContent = STR.dlgRestart;
   $('#btn-dlg-map').textContent = STR.dlgMap;
+  els.tip.textContent = STR.tipFirst;
+  $('#pause-title').textContent = STR.pausedTitle;
+  $('#btn-p-resume').textContent = STR.resume;
+  $('#btn-p-restart').textContent = STR.pRestart;
+  $('#btn-p-settings').textContent = STR.pSettings;
+  $('#btn-p-map').textContent = STR.pMap;
+  $('#promo-title').textContent = STR.promoTitle;
+  $('#promo-body').textContent = STR.promoBody;
+  $('#btn-promo-cta').textContent = STR.promoCta;
+  $('#btn-promo-later').textContent = STR.promoLater;
+  $('#reset-title').textContent = STR.resetConfirmTitle;
+  $('#reset-body').textContent = STR.resetConfirmBody;
+  $('#lvl-hint').textContent = STR.levelsHint;
 
   // load all 5 chapters (relative paths — Pages subpath, §2.1)
   for (let i = 1; i <= 5; i++) {
@@ -156,9 +244,38 @@ async function boot() {
   }
 
   renderLevelSelect();
-  showScreen('levels');
+  showScreen('home'); // M3: boot lands on Home; Play = the frontier level
+  homeScr.show();
 }
 boot();
+
+/** §9.4 Home Play: always the frontier (a mid-level quit abandons, §3.4). */
+function playFrontier() {
+  const id = Math.min(60, getStore().progress.unlocked);
+  const entry = ALL.get(id) ?? ALL.get(1);
+  if (entry) startLevel(entry.lvl, 0);
+}
+
+/** §13 write-triggered side effects: live mute + body-level art toggles. */
+function onSettingChange(key) {
+  if (key === 'sfx') audio.applyMute();
+  syncBodyClasses();
+}
+
+function syncBodyClasses() {
+  const s = getStore()?.settings;
+  document.body.classList.toggle('reduce-motion', !!s?.reduceMotion); // §17
+  document.body.classList.toggle('hl-off', !!s && !s.highlightFree); // §9.4 toggle
+}
+
+/* ---------- §13 destructive reset (second confirm lives here) ---------- */
+function openResetDialog() {
+  resetArmed = false;
+  $('#reset-body').textContent = STR.resetConfirmBody;
+  $('#btn-reset-yes').textContent = STR.resetConfirm;
+  audio.dialog();
+  els.dlgReset.classList.add('open');
+}
 
 /* ---------- level start / fresh deal ---------- */
 function startLevel(lvl, redo, tries = 0) {
@@ -175,6 +292,9 @@ function startLevel(lvl, redo, tries = 0) {
   showScreen('game');
   view.cancelFlights();
   closeDialogUIOnly();
+  closePause({ silent: true });
+  els.dlgPromo.classList.remove('open');
+  els.dlgReset.classList.remove('open');
 
   document.documentElement.style.setProperty('--accent', chapterInfo.accent); // chapter palette (§6)
 
@@ -194,6 +314,9 @@ function startLevel(lvl, redo, tries = 0) {
   els.win.classList.remove('open');
   els.fail.classList.remove('open');
   els.combo.classList.remove('show');
+
+  // §9.4 first-run tooltip: level 1 only, until the very first bank tap ever
+  els.tip.classList.toggle('show', !getStore().progress.tutorialDone && lvl.id === 1);
 
   const cols = Math.max(...lvl.layers.map((r) => r[0].length));
   const rows = Math.max(...lvl.layers.map((r) => r.length));
@@ -236,6 +359,7 @@ els.board.addEventListener('pointerdown', (e) => {
 
   if (!freeIds(state).has(tile.id)) {
     view.deny(el); // not free → jiggle + dim flash (§3.3); never a modal
+    audio.deny(); // §12.1 muted plink
     return;
   }
 
@@ -245,21 +369,31 @@ els.board.addEventListener('pointerdown', (e) => {
       doBank(tile, el); // rule 3: tap the peeked tile → bank it
       return;
     }
-    if (openPeekId != null) view.unpeek(tileById(openPeekId)); // rule 4: swap-peek
+    if (openPeekId != null) doUnpeek(tileById(openPeekId)); // rule 4: swap-peek
     openPeekId = tile.id;
-    view.peek(tile); // rule 2: holds open until the next board action (no timer)
+    doPeek(tile); // rule 2: holds open until the next board action (no timer)
     return;
   }
   if (openPeekId != null) { // rule 5: face-up tap → the peek flips back, then bank
-    view.unpeek(tileById(openPeekId));
+    doUnpeek(tileById(openPeekId));
     openPeekId = null;
   }
   doBank(tile, el);
 });
 
 /* ---------- bank a tile: logic at tap time, flight is cosmetic (§3.3/§14.2) ---------- */
+function doPeek(tile) {
+  view.peek(tile);
+  audio.flip(); // §12.1 candy-flip swish
+}
+
+function doUnpeek(tile) {
+  if (view.unpeek(tile)) audio.flipBack(); // quieter reverse swish (§12.1)
+}
+
 function doBank(tile, el) {
   undoPush(); // §5.4: exactly one snapshot per bank tap
+  const comboAtTap = state.comboN; // the ladder pitch is the tap's combo, not landing's
   const res = bankTile(state, tile, gameTime);
   openPeekId = null; // the peeked tile (if any) just left the board; peek is resolved
 
@@ -274,26 +408,44 @@ function doBank(tile, el) {
     recordPop(state.comboN); // stats: matches = pop events (§13)
   }
 
+  // §9.4: the first-run tooltip teaches exactly one successful bank
+  if (els.tip.classList.contains('show')) {
+    els.tip.classList.remove('show');
+    setProgressFlag('tutorialDone', true);
+  }
+
   el.classList.remove('peeked'); // peeked tiles fly face-up (flip plays during flight, §3.5)
   bank.bank(res.slot, tile.face);
   bank.warnStale(state.bank.map((b) => b?.face));
   refreshBoard();
 
-  view.flyToBank(el, tile, T, bank.slotEls[res.slot], () => onLanded(res, tile));
+  audio.flight(); // §12.1 bank-flight slide
+  view.flyToBank(el, tile, T, bank.slotEls[res.slot], () => onLanded(res, tile, comboAtTap));
   checkNoProgress(); // §5.3 strict trigger, at logical tap time
 }
 
 /** Flight touchdown: landing reveals, auto-pop presentation, fail/win overlays. */
-function onLanded(res) {
+function onLanded(res, _tile, comboAtTap = 1) {
   if (res.popped) {
     bank.popSlots(res.popped[0], res.popped[1]);
+    audio.match(comboAtTap); // §12.1: the pop sound fires AT LANDING, ladder-capped
+    for (const s of res.popped) { // candy burst per freed slot (stage-px coords, §16)
+      const slotEl = bank.slotEls[s];
+      fxr.burst(slotEl.offsetLeft + slotEl.offsetWidth / 2, slotEl.offsetTop + slotEl.offsetHeight / 2, { n: 10 });
+    }
   } else {
     bank.land(res.slot);
+    audio.land(); // §12.1 soft "thock"
   }
   bank.warnStale(state.bank.map((b) => b?.face));
 
   if (state.phase === 'failed') {
     if (!sealRecorded) { sealRecorded = true; recordSeal(); } // §13 stats
+    // the four sealed candies face the player in the fail card (§3.6)
+    els.failTiles.innerHTML = state.bank
+      .filter(Boolean)
+      .map((b) => `<div class="ftile"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-${b.face}"/></svg></div>`)
+      .join('');
     // the 4th tile visibly lands before the fail overlay plays (§3.6 locked)
     setTimeout(() => els.fail.classList.add('open'), 120);
   } else if (state.phase === 'won') {
@@ -303,11 +455,18 @@ function onLanded(res) {
 
 /* ---------- overlays (§3.6 fail / §4.2 win) ---------- */
 function openWin() {
+  const prev = getStore().progress.best[String(level.id)] ?? null; // captured BEFORE recordWin
   if (!wonRecorded) {
     wonRecorded = true;
     recordWin(level.id, hudStars(state), state.score); // §6/§13: unlock N+1, best tier
   }
   const n = hudStars(state);
+  // §4.2 new-best pill: this run improved the persisted best (stars or score)
+  const isNewBest = !prev
+    || n > (prev.stars ?? 0)
+    || state.score > (prev.score ?? 0);
+  els.winBest.hidden = !isNewBest;
+  els.winBest.textContent = STR.newBest;
   const glyphEls = els.win.querySelectorAll('#win-stars .st');
   glyphEls.forEach((g, i) => {
     g.classList.toggle('lit', i < n);
@@ -316,8 +475,13 @@ function openWin() {
       g.style.animationDelay = `${i * 250}ms`;
       void g.offsetWidth;
       g.classList.add('star-in');
+      setTimeout(() => audio.starPing(i), i * 250 + 60); // §12.1 rising pings
     }
   });
+  audio.win(); // §12.1 arpeggio + sprinkle
+  fxr.burst(195, 300, { n: 16, spread: 60 });
+  fxr.burst(120, 390, { n: 10 });
+  fxr.burst(270, 390, { n: 10 });
   const btnNext = $('#btn-next');
   btnNext.style.display = level.id >= 60 ? 'none' : '';
   btnNext.textContent = STR.next(Math.min(60, level.id + 1));
@@ -330,6 +494,15 @@ function openWin() {
     if (p < 1) requestAnimationFrame(count);
   })();
   els.win.classList.add('open');
+
+  // §13 mitigation 1: the install promo shows exactly once, after level 3
+  if (level.id === 3 && !getStore().progress.promoShown) {
+    setTimeout(() => {
+      setProgressFlag('promoShown', true);
+      audio.dialog();
+      els.dlgPromo.classList.add('open');
+    }, 900);
+  }
 }
 
 /* ---------- §5.4 Undo ---------- */
@@ -343,10 +516,11 @@ function doUndo() {
   const snap = undoStack.pop();
   view.cancelFlights(); // in-air flights are cosmetic; their onLanded must not fire (§14.2)
   if (openPeekId != null) {
-    view.unpeek(tileById(openPeekId));
+    doUnpeek(tileById(openPeekId));
     openPeekId = null;
   }
   state = stateFromSnapshot(snap, level.id, level.t2, level.t3); // combo breaks to ×0 (locked §5.4)
+  audio.undo(); // §12.1 rewind slide
   snapScore();
   bank.syncBank(state.bank.map((b) => b?.face));
   const cols = Math.max(...level.layers.map((r) => r[0].length));
@@ -362,7 +536,7 @@ function doUndo() {
 function doShuffle() {
   if (!state || state.phase !== 'playing' || inputLocked) return;
   if (openPeekId != null) { // board action resolves the open peek (§3.5 rule 6)
-    view.unpeek(tileById(openPeekId));
+    doUnpeek(tileById(openPeekId));
     openPeekId = null;
   }
   const rem = [...state.positions.values()];
@@ -389,6 +563,7 @@ function doShuffle() {
   refreshBoard();
   els.grid.classList.add('shimmer');
   setTimeout(() => els.grid.classList.remove('shimmer'), 260);
+  audio.shuffle(); // §12.1 rattle sweep
   checkNoProgress();
 }
 
@@ -412,12 +587,14 @@ function doHint() {
   if (scan.kind === 'pair') {
     pulseTarget(scan.a);
     pulseTarget(scan.b);
+    audio.ghost(); // §12.1 hint chime (same recipe for ghosts + gentle pair pulse)
   } else if (scan.kind === 'ghost') {
     if (openPeekId === scan.a.id) {
       pulseTarget(scan.a); // hint never closes a peek (locked §5.1)
     } else {
       view.ghostFlip(scan.a, () => openPeekId === scan.a.id);
     }
+    audio.ghost();
   } else if (isNoProgressState(state)) {
     openNoProgressDialog(false); // ladder step 3
   } else {
@@ -435,13 +612,14 @@ function checkNoProgress() {
 function openNoProgressDialog(shuffleDisabled) {
   dialogOpen = true;
   if (openPeekId != null) { // any open peek flips back as the scrim opens (§5.3)
-    view.unpeek(tileById(openPeekId));
+    doUnpeek(tileById(openPeekId));
     openPeekId = null;
   }
   $('#btn-dlg-shuffle').disabled = !!shuffleDisabled;
   $('#btn-dlg-undo').disabled = !undoStack.length;
   els.dlg.classList.add('open');
   inputLocked = true;
+  audio.dialog(); // §12.1 doom-thud
 }
 
 function closeDialogUIOnly() {
@@ -454,18 +632,44 @@ function closeDialog() {
   inputLocked = state?.phase !== 'playing'; // resume input iff a level is live
 }
 
+/* ---------- §9.4 pause panel (player-initiated only; tab-hide stays UI-free, §16) ---------- */
+function openPause() {
+  if (!state || state.phase !== 'playing' || paused || dialogOpen || inputLocked) return;
+  paused = true; // the tick stops accumulating game-time; flights keep breathing
+  inputLocked = true;
+  $('#pause-sub').textContent = STR.pausedSub(chapterInfo.chapter, level.id);
+  audio.dialog();
+  els.dlgPause.classList.add('open');
+}
+
+function closePause({ silent = false } = {}) {
+  if (!paused) return;
+  els.dlgPause.classList.remove('open');
+  paused = false;
+  inputLocked = state?.phase !== 'playing' || dialogOpen;
+  if (!silent) audio.jingle(); // resume blip
+}
+
 /* ---------- free & unlimited restart (§3.6) + navigation wiring ---------- */
 function restart(freshCounter) {
   startLevel(level, freshCounter + 1); // reDealCounter increments → fresh deal (§14.4)
 }
 
-$('#btn-restart').addEventListener('click', () => restart(reDealCounter));
+$('#btn-pause').addEventListener('click', openPause);
+$('#btn-p-resume').addEventListener('click', () => closePause());
+$('#btn-p-restart').addEventListener('click', () => { closePause({ silent: true }); restart(reDealCounter); });
+$('#btn-p-settings').addEventListener('click', () => {
+  els.dlgPause.classList.remove('open'); // panel hides; paused stays true until back
+  goSettings('pause');
+});
+$('#btn-p-map').addEventListener('click', () => { closePause({ silent: true }); goMap(); });
+
+$('#btn-levels-back').addEventListener('click', goHome);
 $('#btn-fail-restart').addEventListener('click', () => restart(reDealCounter));
 $('#btn-replay').addEventListener('click', () => startLevel(level, 0));
 $('#btn-next').addEventListener('click', () => {
   if (level.id < 60) startLevel(ALL.get(level.id + 1).lvl, 0);
 });
-$('#btn-map').addEventListener('click', goMap);
 $('#btn-map2').addEventListener('click', goMap);
 $('#btn-fail-map').addEventListener('click', goMap);
 $('#btn-dlg-map').addEventListener('click', goMap);
@@ -476,6 +680,33 @@ $('#btn-dlg-shuffle').addEventListener('click', () => { closeDialog(); doShuffle
 $('#btn-undo').addEventListener('click', doUndo);
 $('#btn-shuffle').addEventListener('click', doShuffle);
 $('#btn-hint').addEventListener('click', doHint);
+
+/* ---------- §13 reset double-confirm + promo CTA ---------- */
+$('#btn-reset-yes').addEventListener('click', () => {
+  if (!resetArmed) { // arm: demand one more explicit tap (§13 destructive)
+    resetArmed = true;
+    $('#reset-body').textContent = STR.resetArm;
+    $('#btn-reset-yes').textContent = STR.resetConfirm;
+    return;
+  }
+  els.dlgReset.classList.remove('open');
+  resetProgress(); // store back to pristine defaults
+  syncBodyClasses();
+  renderLevelSelect();
+  settingsScr?.refresh();
+  statsScr?.refresh();
+  showToast(STR.resetToast);
+});
+$('#btn-reset-cancel').addEventListener('click', () => {
+  resetArmed = false; // leaving the dialog always re-arms fresh next time
+  els.dlgReset.classList.remove('open');
+});
+
+$('#btn-promo-cta').addEventListener('click', async () => {
+  els.dlgPromo.classList.remove('open');
+  try { await installEvent?.prompt(); } catch { /* UA refused — the copy already steered */ }
+});
+$('#btn-promo-later').addEventListener('click', () => els.dlgPromo.classList.remove('open'));
 
 /* ---------- dev-only probes for scripted verification (removed in M4). No
    gameplay influence — only console-invoked. ---------- */
@@ -493,6 +724,18 @@ window.__m2 = () => ({
   peek: openPeekId,
   undoDepth: undoStack.length,
   dialogOpen,
+  paused,
   reDealCounter,
 });
 window.__m2dev = { openDialog: () => openNoProgressDialog(false), closeDialog };
+window.__m3dev = {
+  showPromo: () => { setProgressFlag('promoShown', false); audio.dialog(); els.dlgPromo.classList.add('open'); },
+  showTip: () => els.tip.classList.add('show'),
+  showPause: openPause,
+  showReset: openResetDialog,
+  goHome,
+  freeFaces: () => { // free tile faces for scripted win/fail driving (M4 removes all probes)
+    const f = freeIds(state);
+    return [...state.positions.values()].filter((t) => f.has(t.id)).map((t) => ({ id: t.id, face: t.face }));
+  },
+};

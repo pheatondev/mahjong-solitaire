@@ -15,6 +15,12 @@ export function createLevelSelect(scrollEl, titleEl, onTap) {
     const unlocked = storeData.progress.unlocked;
     const best = storeData.progress.best;
 
+    // §9.4: lifetime total stars in the header ( ★ X / 180 )
+    let total = 0;
+    for (const rec of Object.values(best)) total += rec?.stars ?? 0;
+    let starChip = document.getElementById('lvl-stars');
+    if (starChip) starChip.textContent = STR.starsTotal(total, chapters.reduce((a, c) => a + c.levels.length, 0) * 3);
+
     for (const ch of chapters) {
       const block = document.createElement('div');
       block.className = 'chap';

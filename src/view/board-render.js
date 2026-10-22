@@ -109,10 +109,11 @@ export function createBoardView(gridEl, areaEl) {
       el.setAttribute('aria-label', `${faceName(t.face)} tile, peeked`);
     },
 
-    /** Flip a peeked (or ghost-previewed) tile back to its candy back. */
+    /** Flip a peeked (or ghost-previewed) tile back to its candy back.
+     *  Returns whether a flip actually happened (an audio cue hangs off it). */
     unpeek(t) {
       const el = els.get(t.id);
-      if (!el || !el.classList.contains('peeked')) return;
+      if (!el || !el.classList.contains('peeked')) return false;
       el.classList.remove('peeked');
       el.classList.add('facedown');
       el.classList.add('flip');
@@ -120,6 +121,7 @@ export function createBoardView(gridEl, areaEl) {
       // t.face must exist — hidden tiles carry their real dealt face in state
       el.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-back"/></svg>`;
       el.setAttribute('aria-label', 'facedown tile'); // next refreshFree adds free/blocked
+      return true;
     },
 
     /** §5.1 ghost-flip preview: show the dealt face briefly with the hint pulse, then

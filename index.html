@@ -25,13 +25,18 @@
 
     <!-- §9.4 Level select — M2 boots here (Home screen arrives in M3). -->
     <section id="scr-levels" class="screen hidden" aria-label="Level select">
-      <header id="lvl-head"><h2 id="lvl-title"></h2></header>
+      <header id="lvl-head">
+        <button id="btn-levels-back" class="hbtn" aria-label="Back">←</button>
+        <h2 id="lvl-title"></h2>
+        <span id="lvl-stars"></span>
+      </header>
       <div id="lvl-scroll"></div>
+      <p id="lvl-hint"></p>
     </section>
 
     <section id="scr-game" class="screen" aria-label="Game">
     <header id="hud">
-      <button id="btn-map" class="hbtn" aria-label="Level map">🗺</button>
+      <button id="btn-pause" class="hbtn" aria-label="Pause">‖</button>
       <span id="chip">Melon · L1</span>
       <div id="hud-right">
         <span id="stars" aria-label="Live star projection"></span>
@@ -41,6 +46,7 @@
 
     <!-- The tin: 4 slots, top HUD zone (§3.3/§9.4). Banked slots are a dead zone (§9.5 locked). -->
     <div id="bank" aria-label="Bank">
+      <span id="bank-label" aria-hidden="true">BANK</span>
       <div class="slot" data-slot="0"></div>
       <div class="slot" data-slot="1"></div>
       <div class="slot" data-slot="2"></div>
@@ -55,12 +61,24 @@
 
     <footer id="bar">
       <!-- §5 boosters (all player-tapped, no auto-assist — §2.4/§5) + free Restart (§3.6) -->
-      <button id="btn-undo" class="btn round" aria-label="Undo">↩</button>
-      <button id="btn-shuffle" class="btn round" aria-label="Shuffle">🔄</button>
-      <button id="btn-hint" class="btn round" aria-label="Hint">💡</button>
-      <button id="btn-restart" class="btn round" aria-label="Restart">↻</button>
+      <button id="btn-undo" class="btn round" aria-label="Undo"><span class="bic">↩</span>Undo</button>
+      <button id="btn-shuffle" class="btn round" aria-label="Shuffle"><span class="bic">🔄</span>Shuffle</button>
+      <button id="btn-hint" class="btn round" aria-label="Hint"><span class="bic">💡</span>Hint</button>
     </footer>
+
+    <!-- §9.4 first-run tooltip: one-time (level 1), dismisses on the first bank tap;
+         doubles as the audio-unlock gesture (§12). -->
+    <div id="tip" role="status" class="tipbubble"></div>
     </section><!-- /scr-game -->
+
+    <!-- Home (§9.4) — content built by src/view/screens/home.js -->
+    <section id="scr-home" class="screen hidden" aria-label="Home"></section>
+
+    <!-- Stats (§9.4) — cards built by src/view/screens/stats.js -->
+    <section id="scr-stats" class="screen hidden" aria-label="Stats"></section>
+
+    <!-- Settings (§9.4/§12.2/§13) — rows built by src/view/screens/settings.js -->
+    <section id="scr-settings" class="screen hidden" aria-label="Settings"></section>
 
     <div id="fx" aria-hidden="true"></div>
 
@@ -71,8 +89,9 @@
           <span class="st">★</span><span class="st">★</span><span class="st">★</span>
         </div>
         <div id="win-score">0</div>
+        <div id="win-best" class="best-badge" hidden></div>
         <div class="bigbtns">
-          <button id="btn-next" class="btn wide"></button>
+          <button id="btn-next" class="btn wide primary"></button>
           <button id="btn-replay" class="btn wide"></button>
           <button id="btn-map2" class="btn wide"></button>
         </div>
@@ -86,7 +105,7 @@
         <h2 id="nopro-title"></h2>
         <p id="nopro-body"></p>
         <div class="bigbtns colbtns">
-          <button id="btn-dlg-shuffle" class="btn wide"></button>
+          <button id="btn-dlg-shuffle" class="btn wide primary"></button>
           <button id="btn-dlg-undo" class="btn wide"></button>
           <button id="btn-dlg-restart" class="btn wide"></button>
           <button id="btn-dlg-map" class="btn wide"></button>
@@ -97,9 +116,53 @@
     <div id="ovl-fail" class="overlay" role="dialog" aria-modal="true" aria-labelledby="fail-title">
       <div class="panel">
         <h2 id="fail-title"></h2>
-        <div class="bigbtns">
-          <button id="btn-fail-restart" class="btn wide"></button>
+        <p id="fail-body"></p>
+        <!-- the four sealed candies, at 78% mini scale (§3.6) -->
+        <div id="fail-tiles" aria-hidden="true"></div>
+        <div class="bigbtns colbtns">
+          <button id="btn-fail-restart" class="btn wide primary"></button>
           <button id="btn-fail-map" class="btn wide"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- §9.4 pause panel: player-initiated only (the tab-hide clock freeze is §16 and
+         opens nothing). Restart/Settings/Map route out; Resume returns to play. -->
+    <div id="dlg-pause" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="panel">
+        <h2 id="pause-title"></h2>
+        <p id="pause-sub"></p>
+        <div class="bigbtns colbtns">
+          <button id="btn-p-resume" class="btn wide primary"></button>
+          <button id="btn-p-restart" class="btn wide"></button>
+          <button id="btn-p-settings" class="btn wide"></button>
+          <button id="btn-p-map" class="btn wide"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- §13 mitigation 1: home-screen install promo — once, after level 3 completes.
+         On Chromium the CTA fires the captured beforeinstallprompt; elsewhere the copy
+         alone steers to the browser's Share menu. -->
+    <div id="dlg-promo" class="overlay" role="dialog" aria-modal="true" aria-labelledby="promo-title">
+      <div class="panel">
+        <h2 id="promo-title"></h2>
+        <p id="promo-body"></p>
+        <div class="bigbtns colbtns">
+          <button id="btn-promo-cta" class="btn wide primary"></button>
+          <button id="btn-promo-later" class="btn wide"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- §13 destructive reset, second stage of the double-confirm. -->
+    <div id="dlg-reset" class="overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+      <div class="panel">
+        <h2 id="reset-title"></h2>
+        <p id="reset-body"></p>
+        <div class="bigbtns colbtns">
+          <button id="btn-reset-yes" class="btn wide danger"></button>
+          <button id="btn-reset-cancel" class="btn wide"></button>
         </div>
       </div>
     </div>

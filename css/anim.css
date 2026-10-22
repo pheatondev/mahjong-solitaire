@@ -73,6 +73,19 @@
   50%      { box-shadow: 0 3px 0 var(--tile-bone), 0 0 0 3px var(--accent), 0 0 12px var(--accent); }
 }
 
+/* first-run tooltip entrance (§9.4) */
+@keyframes tip-in {
+  0%   { scale: 0.8 0.6; opacity: 0; }
+  100% { scale: 1 1; opacity: 1; }
+}
+
+/* new-best badge pop (§4.2) */
+@keyframes badge-in {
+  0%   { scale: 0.6 0.6; opacity: 0; }
+  60%  { scale: 1.15 1.15; opacity: 1; }
+  100% { scale: 1 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flight, .flight > svg { animation: none !important; transition: opacity 200ms !important; }
   .tile.deny { animation: none !important; filter: brightness(0.7); }

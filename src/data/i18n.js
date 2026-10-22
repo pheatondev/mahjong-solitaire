@@ -35,6 +35,73 @@ export const STR = {
 
   // §13 storage-failure toast (one-time, non-blocking)
   saveToast: "Progress won't be saved in this browser mode 🍪",
+
+  // ======= M3 =======
+
+  // §9.4 Home — logo lockup (CSS-only), frontier Play, quiet menu buttons
+  homeTagline: 'candy mahjong solitaire 🍬',
+  homePlay: '▶ Play',
+  homeLevels: '🍬 Levels',
+  homeStats: '📊 Stats',
+  homeSettings: '⚙️ Settings',
+  homeFootA: 'v1.0 · made with 🍬',
+  homeFootB: 'progress saved on this device · no ads, no tracking',
+
+  // §9.4 levels extras
+  backAria: 'Back',
+  starsTotal: (a, b) => `★ ${a} / ${b}`,
+  levelsHint: 'beat level N unlocks N+1 · replay anytime for stars',
+
+  // §9.4 first-run tooltip (one-time, level 1; dismisses on first bank tap)
+  tipFirst: 'Tap a free tile to bank it — two matching tiles in the bank pop! 🍬',
+
+  // §9.4 pause panel
+  pausedTitle: 'Paused ⏸',
+  pausedSub: (chapter, id) => `${chapter} · Level ${id}`,
+  resume: '▶ Resume',
+  pRestart: '↻ Restart',
+  pSettings: '⚙️ Settings',
+  pMap: '🗺 Level map',
+
+  // §3.6 fail overlay copy
+  failBody: 'Four different candies, no pair — attempt ends.',
+
+  // §4.2 win extras
+  newBest: '🍬 New best!',
+
+  // §9.4 stats screen
+  statsTitle: 'Stats',
+  stPaired: 'pairs cleared',
+  stMatches: 'matches played',
+  stCombo: 'best combo',
+  stLevels: 'levels completed',
+  stOverflow: 'tin overflows',
+  stStars: 'total stars',
+  starCount: (a, b) => `${a} / ${b}`,
+  statsFoot: 'lifetime · per device — reset only in Settings',
+
+  // §9.4 settings (§10.4 single theme; §12.2 inert music)
+  setTitle: 'Settings',
+  setSfx: 'Sound effects',
+  setMusic: 'Music',
+  setMusicNote: 'music ships post-launch · toggle stays resident',
+  setHighlight: 'Highlight free tiles',
+  setReduce: 'Reduce motion',
+  setReset: 'Reset progress',
+  setResetHint: 'double-confirm',
+  setAboutA: 'Mahjong Lite v1.0 · no ads · no accounts · no tracking',
+  setAboutB: 'progress saved locally in this browser only 🍪',
+  resetConfirmTitle: 'Reset all progress?',
+  resetConfirmBody: 'Stars, bests and stats are wiped for this browser. No way back.',
+  resetArm: 'Tap again to confirm',
+  resetConfirm: 'Yes — reset everything',
+  resetToast: 'Progress reset — fresh candies 🍬',
+
+  // §13 mitigation 1: install promo after level 3 (dismissible, once)
+  promoTitle: 'Make it permanent 🍬',
+  promoBody: 'Add Mahjong Lite to your home screen — progress becomes durable against browser cleanup.',
+  promoCta: '📲 Add to home screen',
+  promoLater: 'Maybe later',
 };
 
 /** A11y labels per family (§17: tiles get aria-label, e.g. "Blue dot tile, free"). */

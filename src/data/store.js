@@ -13,7 +13,7 @@ const SETTINGS_DEFAULTS = {
   highlightFree: true,
   reduceMotion: false,
 };
-const PROGRESS_DEFAULTS = () => ({ unlocked: 1, lastPlayed: 0, best: {} });
+const PROGRESS_DEFAULTS = () => ({ unlocked: 1, lastPlayed: 0, best: {}, tutorialDone: false, promoShown: false });
 const STATS_DEFAULTS = () => ({
   matches: 0,     // pop events (user-ruled ×2 relation to pairsCleared)
   pairsCleared: 0, // tiles matched away (2 × matches)
@@ -57,6 +57,8 @@ function sanitize(obj) {
       unlocked: Math.min(60, Math.max(1, Math.round(num(obj.progress?.unlocked, 1)))),
       lastPlayed: Math.min(60, Math.max(0, Math.round(num(obj.progress?.lastPlayed, 0)))),
       best,
+      tutorialDone: bool(obj.progress?.tutorialDone, false), // §9.4 first-run tooltip
+      promoShown: bool(obj.progress?.promoShown, false),     // §13 mitigation 1: install promo
     },
     stats: {
       matches: num(obj.stats?.matches, 0),
@@ -105,6 +107,25 @@ export function setBrokenToastHandler(fn) { onBrokenToast = fn; }
 
 export function getStore() { return data; }
 export function isBroken() { return broken; }
+
+/** Lifetime total stars over all persisted bests (§9.4 Levels header + Stats). */
+export function totalStars() {
+  let n = 0;
+  for (const r of Object.values(data.progress.best)) n += r?.stars ?? 0;
+  return n;
+}
+
+/** §9.4 one-time-ness flags live in progress (first-run tooltip, install promo). */
+export function setProgressFlag(key, value) {
+  if (key in data.progress) data.progress[key] = value;
+  persist();
+}
+
+/** §13 destructive reset — the double-confirm dialog lives in the settings screen. */
+export function resetProgress() {
+  data = defaults();
+  persist();
+}
 
 /** bestOf(id) → {stars, score} | undefined */
 export function bestOf(levelId) {
