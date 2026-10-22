@@ -24,8 +24,11 @@
 <body data-theme="bubblegum">
   <div id="bg" aria-hidden="true"></div>
 
-  <!-- The locked 9:16 stage (§9.1): all layout math is 390×844 design px, uniformly scaled. -->
-  <div id="stage">
+  <!-- §9.1 (v0.3.2) safe-area frame: insets via env() in CSS; #stage centers inside.
+       #bg stays full-bleed behind it (letterboxing keeps the themed sky). -->
+  <div id="safe">
+    <!-- The locked 9:16 stage (§9.1): all layout math is 390×844 design px, uniformly scaled. -->
+    <div id="stage">
 
     <!-- §9.4 Level select — M2 boots here (Home screen arrives in M3). -->
     <section id="scr-levels" class="screen hidden" aria-label="Level select">
@@ -144,20 +147,6 @@
       </div>
     </div>
 
-    <!-- §13 mitigation 1: home-screen install promo — once, after level 3 completes.
-         On Chromium the CTA fires the captured beforeinstallprompt; elsewhere the copy
-         alone steers to the browser's Share menu. -->
-    <div id="dlg-promo" class="overlay" role="dialog" aria-modal="true" aria-labelledby="promo-title">
-      <div class="panel">
-        <h2 id="promo-title"></h2>
-        <p id="promo-body"></p>
-        <div class="bigbtns colbtns">
-          <button id="btn-promo-cta" class="btn wide primary"></button>
-          <button id="btn-promo-later" class="btn wide"></button>
-        </div>
-      </div>
-    </div>
-
     <!-- §13 destructive reset, second stage of the double-confirm. -->
     <div id="dlg-reset" class="overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
       <div class="panel">
@@ -172,6 +161,7 @@
 
     <!-- §13 storage-failure toast (one-time, non-blocking) -->
     <div id="toast" role="status" aria-live="polite"></div>
+    </div>
   </div>
 
   <!-- Tile face sprite (§11): ALL faces are inline SVG symbols — zero raster assets, no extra requests.

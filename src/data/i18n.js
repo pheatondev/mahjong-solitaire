@@ -96,12 +96,6 @@ export const STR = {
   resetArm: 'Tap again to confirm',
   resetConfirm: 'Yes — reset everything',
   resetToast: 'Progress reset — fresh candies 🍬',
-
-  // §13 mitigation 1: install promo after level 3 (dismissible, once)
-  promoTitle: 'Make it permanent 🍬',
-  promoBody: 'Add Mahjong Lite to your home screen — progress becomes durable against browser cleanup.',
-  promoCta: '📲 Add to home screen',
-  promoLater: 'Maybe later',
 };
 
 /** A11y labels per family (§17: tiles get aria-label, e.g. "Blue dot tile, free"). */

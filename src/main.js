@@ -29,14 +29,14 @@ import { createSettingsScr } from './view/screens/settings.js';
 
 const $ = (s) => document.querySelector(s);
 const els = {
-  stage: $('#stage'), scrLevels: $('#scr-levels'), scrGame: $('#scr-game'),
+  safe: $('#safe'), stage: $('#stage'), scrLevels: $('#scr-levels'), scrGame: $('#scr-game'),
   scrHome: $('#scr-home'), scrStats: $('#scr-stats'), scrSettings: $('#scr-settings'),
   fx: $('#fx'),
   lvlScroll: $('#lvl-scroll'), lvlTitle: $('#lvl-title'),
   bank: $('#bank'), board: $('#board'), grid: $('#grid'),
   chip: $('#chip'), score: $('#score'), stars: $('#stars'), combo: $('#combo'),
   win: $('#ovl-win'), fail: $('#ovl-fail'), dlg: $('#dlg-nopro'), toast: $('#toast'),
-  dlgPause: $('#dlg-pause'), dlgPromo: $('#dlg-promo'), dlgReset: $('#dlg-reset'),
+  dlgPause: $('#dlg-pause'), dlgReset: $('#dlg-reset'),
   tip: $('#tip'), winBest: $('#win-best'), failBody: $('#fail-body'), failTiles: $('#fail-tiles'),
 };
 
@@ -61,15 +61,9 @@ let wonRecorded = false;
 let paused = false; // §9.4 pause panel: player-initiated only
 let settingsReturn = 'home'; // settings can be reached from Home or the pause panel
 let resetArmed = false; // §13 double-confirm
-let installEvent = null; // captured beforeinstallprompt for the promo CTA
 let homeScr = null;
 let statsScr = null;
 let settingsScr = null;
-
-addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault(); // never let the UA fire its own UI; the promo owns it (§13)
-  installEvent = e;
-});
 
 let view, bank;
 view = createBoardView(els.grid, els.board);
@@ -81,17 +75,21 @@ const fxr = createFx(els.fx, () => getStore()?.settings?.reduceMotion ?? false);
 // §12: the AudioContext unlocks on the very first user gesture, whatever it hits
 document.addEventListener('pointerdown', () => audio.unlock(), { once: true, capture: true });
 
-/* ---------- §9.1 locked stage fit ---------- */
+/* ---------- §9.1 locked stage fit (v0.3.2: fits the SAFE AREA, not the raw
+   viewport — env(safe-area-inset-*) insets live in CSS on #safe; stage centers
+   inside it so top UI always clears the notch, and the scale shrinks slightly
+   on notched devices to keep every design px inside the safe zone). ---------- */
 function fitStage() {
-  const vw = document.documentElement.clientWidth;
-  const vh = document.documentElement.clientHeight;
+  const vw = els.safe?.clientWidth || document.documentElement.clientWidth;
+  const vh = els.safe?.clientHeight || document.documentElement.clientHeight;
   const scale = clamp(Math.min(vw / 390, vh / 844), 0.4, 2.0);
   document.documentElement.style.setProperty('--scale', scale);
 }
+fitStage();
+new ResizeObserver(fitStage).observe(els.safe || document.documentElement);
 new ResizeObserver(fitStage).observe(document.documentElement);
 addEventListener('resize', fitStage);
 visualViewport?.addEventListener('resize', fitStage);
-fitStage();
 
 /* ---------- game clock: game-time for the invisible combo window (§4.1) ----------
    rAF naturally stops when the tab is hidden (§16: clock freezes; no pause UI).
@@ -209,20 +207,6 @@ function hideOverlay(dlg) { // call whenever the topmost dialog fades out
   if (dlg) dlg.classList.remove('open');
 }
 
-/* ---------- §13 install promo: exactly once, on the win card of L3+ ---------- */
-let promoTimer = null;
-function schedulePromo() { // 900 ms so the win card reads first; guard makes a fast
-  // Next inert — the promo re-arms at the next win card instead of interrupting a live deal
-  clearTimeout(promoTimer);
-  promoTimer = setTimeout(() => {
-    promoTimer = null;
-    if (state?.phase !== 'won' || currentScreen !== 'game') return;
-    setProgressFlag('promoShown', true);
-    audio.dialog();
-    showOverlay(els.dlgPromo);
-  }, 900);
-}
-
 /* ---------- boot ---------- */
 async function boot() {
   setBrokenToastHandler(() => showToast(STR.saveToast)); // §13 one-time toast — before initStore
@@ -260,10 +244,6 @@ async function boot() {
   $('#btn-p-restart').textContent = STR.pRestart;
   $('#btn-p-settings').textContent = STR.pSettings;
   $('#btn-p-map').textContent = STR.pMap;
-  $('#promo-title').textContent = STR.promoTitle;
-  $('#promo-body').textContent = STR.promoBody;
-  $('#btn-promo-cta').textContent = STR.promoCta;
-  $('#btn-promo-later').textContent = STR.promoLater;
   $('#reset-title').textContent = STR.resetConfirmTitle;
   $('#reset-body').textContent = STR.resetConfirmBody;
   $('#lvl-hint').textContent = STR.levelsHint;
@@ -342,13 +322,11 @@ function startLevel(lvl, redo, tries = 0) {
   wonRecorded = false;
   dialogOpen = false;
   revealTimerSet = false; // fresh attempt owns its reveal (rapid-bank stale timers can't ghost it)
-  clearTimeout(promoTimer); // Next beat the win-card promo? it shows on the NEXT win card (§13 once)
   currentScreen = 'game';
   showScreen('game');
   view.cancelFlights();
   closeDialogUIOnly();
   closePause({ silent: true });
-  hideOverlay(els.dlgPromo);
   hideOverlay(els.dlgReset);
 
   document.documentElement.style.setProperty('--accent', chapterInfo.accent); // chapter palette (§6)
@@ -564,9 +542,6 @@ function openWin() {
     if (p < 1) requestAnimationFrame(count);
   })();
   showOverlay(els.win);
-
-  // §13 mitigation 1: the install promo shows exactly once, on the win card of L3+
-  if (level.id >= 3 && !getStore().progress.promoShown) schedulePromo();
 }
 
 /* ---------- §5.4 Undo ---------- */
@@ -757,7 +732,7 @@ $('#btn-undo').addEventListener('click', doUndo);
 $('#btn-shuffle').addEventListener('click', doShuffle);
 $('#btn-hint').addEventListener('click', doHint);
 
-/* ---------- §13 reset double-confirm + promo CTA ---------- */
+/* ---------- §13 reset double-confirm ---------- */
 $('#btn-reset-yes').addEventListener('click', () => {
   if (!resetArmed) { // arm: demand one more explicit tap (§13 destructive)
     resetArmed = true;
@@ -778,8 +753,3 @@ $('#btn-reset-cancel').addEventListener('click', () => {
   hideOverlay(els.dlgReset);
 });
 
-$('#btn-promo-cta').addEventListener('click', async () => {
-  hideOverlay(els.dlgPromo);
-  try { await installEvent?.prompt(); } catch { /* UA refused — the copy already steered */ }
-});
-$('#btn-promo-later').addEventListener('click', () => hideOverlay(els.dlgPromo));

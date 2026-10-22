@@ -6,7 +6,7 @@
 | **Genre** | Casual puzzle — mahjong solitaire (tile-matching) |
 | **Platform** | Web (mobile-first), static files on GitHub Pages |
 | **Reference game** | *Mahjong Blast* by Nebula Studio (iOS/Android) |
-| **Doc version** | v0.3.1 — playtest ruling: §5.2 best-effort shuffle when the tin holds tiles (odd on-board multiset), constructive guarantee kept for even multisets |
+| **Doc version** | v0.3.2 — user-feedback amendments: install promo removed (§13), safe-area frame for the stage (§9.1), tighter board fit padding (§14.2); supersedes v0.3.1 playtest ruling: §5.2 best-effort shuffle when the tin holds tiles (odd on-board multiset), constructive guarantee kept for even multisets |
 | **Date** | 2026-10-23 |
 | **Status** | Implementation-ready — this document is the build contract |
 | **Doc format** | Markdown (`.md`) — human-readable, LLM-readable, renders natively on GitHub |
@@ -471,7 +471,7 @@ Notes: the free-check must use the *same* §3.1 predicate as gameplay — never 
 - The game lives inside a **9:16 stage**, computed as `scale = clamp(min(vw / 390, vh / 844), 0.4, 2.0)` → stage box `390 × 844` CSS px, centered. All UI and layout math uses these fixed design pixels; the stage itself is transformed (`transform: scale()`), so 1 design px always means the same thing. The **max clamp keeps huge displays (4K) from going poster-size** — beyond 2×, the extra screen becomes margin, filled by background art (tunable).
 - **Full-bleed background:** the themed gradient fills the *entire* screen (outside the stage), so tablets/desktop don't show dead bars — they show sky. Gameplay, HUD, and modals stay strictly inside the stage.
 - Implementation notes: CSS custom properties `--stage-w`, `--stage-h`, `--scale` set by a `ResizeObserver` on `document` + `visualViewport` listener (keyboard/toolbar changes on iOS shift the viewport).
-- Safe areas: stage geometry adds `env(safe-area-inset-*)`-aware padding for notches/home-indicator (viewport meta `viewport-fit=cover`).
+- **Safe areas (amended v0.3.2):** a `#safe` frame (`position: fixed` with `inset` built from `max(env(safe-area-inset-top), 6px)` / `env()` on the other edges; extra 2px bottom minimum) sits between the full-bleed `#bg` and the stage; the stage centers *inside the frame* via absolute positioning, and the fit scale is computed from the frame's box, not the raw viewport (`viewport-fit=cover` stays). Result: HUD/top UI always clears the notch/home-indicator on standalone installs, and on notched devices the whole stage scales down slightly to stay inside the safe zone. In a plain browser tab insets are ~0, so the only cost is the small top/bottom minimum margin.
 
 ### 9.2 Orientation & device policy (locked stage, every screen)
 
@@ -669,8 +669,8 @@ Single `localStorage` key: **`mahjonglite:v1`** (versioned; unknown guard → mi
 - Storage-failure (private mode / quota) handling: game runs fully in memory, shows one-time non-blocking toast "Progress won't be saved in this browser mode 🍪".
 - **Robustness against Safari's 7-day storage eviction (design notes, not all v1):**
   - iOS Safari (ITP) deletes script-writable storage (localStorage *and* IndexedDB) after 7 days without a site visit — unless the site is installed as a home-screen PWA (exempt) or on Chrome/Firefox/desktop (not affected).
-  - Mitigation 1 (persistence architectural): the game is a installable PWA; the Home screen promo appears once after level 3 completes ("Add Mahjong Lite to your Home Screen — progress becomes permanent 🍬"). Install = durable storage.
-  - Mitigation 2: **Save Code manual backup — cut from v1 (locked)**, moved to backlog (§19). The PWA-install promo (Mitigation 1) covers the main risk path.
+  - Mitigation 1 (**removed v0.3.2** — user feedback: the home-screen install promo popup was cut from the UX; §5.3's fail-dialog copy remains the backstop nudge). The old `promoShown` progress flag is dropped from the schema; older saves may still carry it, harmlessly ignored.
+  - Mitigation 2: **Save Code manual backup — cut from v1 (locked)**, moved to backlog (§19). No promo replaces it — install remains discoverable only through the browser's own UI.
   - Do **not** mirror to IndexedDB "for safety": ITP evicts both under the same policy; one source of truth (`store.js`) stays simpler.
 - **Reset progress**: settings screen, double-confirm dialog (destructive).
 
@@ -721,7 +721,7 @@ mahjong-lite/
 ### 14.2 Rendering approach (DOM tiles)
 
 - Each tile = one `div.tile` with `transform: translate3d(x, y, 0)`, `z-index = 100 + layer×10` (ties within a layer are harmless — full-overlap alignment means no intra-layer overlap); side/cover relationships are pure arithmetic.
-- **Fit calculation:** board bounding box `(cols×T, rows×T + (maxLayer−1)×0)` — v1 has no per-layer offsets (full-overlap alignment), so board height is `rows × T`; `T = clamp(min(stageW_avail/cols, stageH_avail/rows), 26, 72)` (locked 26 px floor ↔ the ≤14-col cap, §7.1: 14 × 26 = 364 px ≤ stage width). Board container centers horizontally, sits under the HUD.
+- **Fit calculation:** board bounding box `(cols×T, rows×T + (maxLayer−1)×0)` — v1 has no per-layer offsets (full-overlap alignment), so board height is `rows × T`; `T = clamp(min(stageW_avail/cols, stageH_avail/rows), 26, 72)` (locked 26 px floor ↔ the ≤14-col cap, §7.1: 14 × 26 = 364 px ≤ stage width). Board container centers horizontally, sits under the HUD. **Amended v0.3.2 (user feedback "tiles too small to tap"):** the per-side padding reserved around the board dropped from 12 px to **5 px** — width is the binding constraint on every wide board, so this lifts e.g. 14-col boards from ~26.1 px to ~27.1 px per tile; the 26 px floor stays (touching tiles must never exceed the stage width). The §17 hit-target generosity on top of `T` remains the main tap-affordance.
 - Visual overlap transparency: layer-1+ tiles draw a 1.5 px darker seam + stronger drop shadow so stacking reads clearly at small tile sizes.
 - **Match pops happen in the bank** (the twin pair's two slots): animate the two slot tiles (scale+fade+confetti), then clear. Board-side, a tapped tile's cell is freed **logically at tap time** — free-checks see it gone instantly; the flight to the bank is cosmetic and non-blocking. Targeted re-z updates only — never re-render all 136 nodes for one move.
 

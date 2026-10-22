@@ -546,9 +546,8 @@
   will-change: transform, opacity;
 }
 
-/* ---------- pause / promo / reset panels ---------- */
+/* ---------- pause / reset panels ---------- */
 #pause-sub { font-size: 13px; font-weight: 600; color: var(--ink); opacity: .8; margin-top: -6px; }
-#promo-body { font-size: 14px; font-weight: 600; color: var(--ink); opacity: .75; }
 #reset-body { font-size: 14px; font-weight: 600; color: #d14a3f; opacity: .9; }
 
 /* ---------- §17 reduce motion + highlight-off semantics ---------- */

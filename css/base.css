@@ -54,9 +54,18 @@ body {
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
 }
 
-/* The locked stage: 390 × 844 design px, centered, uniformly scaled. */
-#stage {
+/* §9.1 (v0.3.2) safe-area frame — the stage centers inside the mobile safe zone.
+   The 6px top minimum answers user feedback ("top UI must sit below the notch");
+   env() insets are 0 in a plain browser tab, so cost there is only the 6/2px margin. */
+#safe {
   position: fixed;
+  inset: max(env(safe-area-inset-top, 0px), 6px) env(safe-area-inset-right, 0px)
+         max(env(safe-area-inset-bottom, 0px), 2px) env(safe-area-inset-left, 0px);
+}
+
+/* The locked stage: 390 × 844 design px, centered in the safe frame, uniformly scaled. */
+#stage {
+  position: absolute;
   left: 50%;
   top: 50%;
   width: var(--stage-w);

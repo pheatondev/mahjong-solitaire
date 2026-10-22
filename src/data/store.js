@@ -13,7 +13,7 @@ const SETTINGS_DEFAULTS = {
   highlightFree: true,
   reduceMotion: false,
 };
-const PROGRESS_DEFAULTS = () => ({ unlocked: 1, lastPlayed: 0, best: {}, tutorialDone: false, promoShown: false });
+const PROGRESS_DEFAULTS = () => ({ unlocked: 1, lastPlayed: 0, best: {}, tutorialDone: false });
 const STATS_DEFAULTS = () => ({
   matches: 0,     // pop events (user-ruled ×2 relation to pairsCleared)
   pairsCleared: 0, // tiles matched away (2 × matches)
@@ -58,7 +58,7 @@ function sanitize(obj) {
       lastPlayed: Math.min(60, Math.max(0, Math.round(num(obj.progress?.lastPlayed, 0)))),
       best,
       tutorialDone: bool(obj.progress?.tutorialDone, false), // §9.4 first-run tooltip
-      promoShown: bool(obj.progress?.promoShown, false),     // §13 mitigation 1: install promo
+      tutorialDone: bool(obj.progress?.tutorialDone, false),
     },
     stats: {
       matches: num(obj.stats?.matches, 0),
@@ -115,7 +115,7 @@ export function totalStars() {
   return n;
 }
 
-/** §9.4 one-time-ness flags live in progress (first-run tooltip, install promo). */
+/** §9.4 one-time-ness flags live in progress (first-run tooltip). */
 export function setProgressFlag(key, value) {
   if (key in data.progress) data.progress[key] = value;
   persist();
