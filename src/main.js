@@ -14,6 +14,7 @@ import { solverCheck } from './core/solver.js';
 import { thresholds } from './core/score.js';
 import { parseChapter } from './data/levels.js';
 import { STR } from './data/i18n.js';
+import { trapFocus } from './view/widgets.js';
 import {
   initStore, setBrokenToastHandler, getStore, markPlayed, recordPop, recordSeal, recordWin,
   setSetting, setProgressFlag, totalStars, resetProgress,
@@ -161,7 +162,7 @@ function goSettings(returnTo = 'home') {
 function goSettingsBack() {
   if (settingsReturn === 'pause' && state?.phase === 'playing') {
     showScreen('game');
-    els.dlgPause.classList.add('open'); // the paused game is still underneath
+    showOverlay(els.dlgPause); // the paused game is still underneath
   } else {
     goHome();
   }
@@ -188,6 +189,19 @@ function showToast(msg) {
   els.toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2400);
+}
+
+/* ---------- overlay focus management (§17: dialogs trap focus + restore it) ---------- */
+let releaseOverlayFocus = null;
+function showOverlay(dlg) { // call whenever a dialog fades in
+  releaseOverlayFocus?.();
+  dlg.classList.add('open'); // must be visible BEFORE focusing (display:none drops focus)
+  releaseOverlayFocus = trapFocus(dlg);
+}
+function hideOverlay(dlg) { // call whenever the topmost dialog fades out
+  releaseOverlayFocus?.();
+  releaseOverlayFocus = null;
+  if (dlg) dlg.classList.remove('open');
 }
 
 /* ---------- boot ---------- */
@@ -246,8 +260,28 @@ async function boot() {
   renderLevelSelect();
   showScreen('home'); // M3: boot lands on Home; Play = the frontier level
   homeScr.show();
+
+  // §15 PWA: register the dumb-precache worker. URL is derived from this module's own
+  // location (not the document) so it stays correct under the Pages subpath (§2.1).
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(new URL('../sw.js', import.meta.url)).catch(() => {
+      /* offline precache is a progressive enhancement — play works regardless */
+    });
+  }
 }
 boot();
+
+/* ---------- §9.2 landscape-phone hint (never blocking, once per session) ---------- */
+let landscapeHinted = false;
+function landscapeCheck() {
+  if (landscapeHinted) return;
+  if (matchMedia('(orientation: landscape) and (max-width: 900px)').matches) {
+    landscapeHinted = true; // in-memory only — a reload starts a fresh session
+    showToast(STR.portraitHint);
+  }
+}
+addEventListener('resize', landscapeCheck);
+landscapeCheck();
 
 /** §9.4 Home Play: always the frontier (a mid-level quit abandons, §3.4). */
 function playFrontier() {
@@ -274,7 +308,7 @@ function openResetDialog() {
   $('#reset-body').textContent = STR.resetConfirmBody;
   $('#btn-reset-yes').textContent = STR.resetConfirm;
   audio.dialog();
-  els.dlgReset.classList.add('open');
+  showOverlay(els.dlgReset);
 }
 
 /* ---------- level start / fresh deal ---------- */
@@ -293,8 +327,8 @@ function startLevel(lvl, redo, tries = 0) {
   view.cancelFlights();
   closeDialogUIOnly();
   closePause({ silent: true });
-  els.dlgPromo.classList.remove('open');
-  els.dlgReset.classList.remove('open');
+  hideOverlay(els.dlgPromo);
+  hideOverlay(els.dlgReset);
 
   document.documentElement.style.setProperty('--accent', chapterInfo.accent); // chapter palette (§6)
 
@@ -311,8 +345,8 @@ function startLevel(lvl, redo, tries = 0) {
   els.chip.textContent = STR.chip(chapterInfo.chapter, lvl.id);
   els.chip.classList.add('on');
   bank.clearAll();
-  els.win.classList.remove('open');
-  els.fail.classList.remove('open');
+  hideOverlay(els.win);
+  hideOverlay(els.fail);
   els.combo.classList.remove('show');
 
   // §9.4 first-run tooltip: level 1 only, until the very first bank tap ever
@@ -447,7 +481,7 @@ function onLanded(res, _tile, comboAtTap = 1) {
       .map((b) => `<div class="ftile"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-${b.face}"/></svg></div>`)
       .join('');
     // the 4th tile visibly lands before the fail overlay plays (§3.6 locked)
-    setTimeout(() => els.fail.classList.add('open'), 120);
+    setTimeout(() => showOverlay(els.fail), 120);
   } else if (state.phase === 'won') {
     setTimeout(openWin, 280); // last pair pops first, then ★ reveal (§3.4)
   }
@@ -493,14 +527,14 @@ function openWin() {
     els.win.querySelector('#win-score').textContent = String(Math.round(target * p));
     if (p < 1) requestAnimationFrame(count);
   })();
-  els.win.classList.add('open');
+  showOverlay(els.win);
 
   // §13 mitigation 1: the install promo shows exactly once, after level 3
   if (level.id === 3 && !getStore().progress.promoShown) {
     setTimeout(() => {
       setProgressFlag('promoShown', true);
       audio.dialog();
-      els.dlgPromo.classList.add('open');
+      showOverlay(els.dlgPromo);
     }, 900);
   }
 }
@@ -617,13 +651,13 @@ function openNoProgressDialog(shuffleDisabled) {
   }
   $('#btn-dlg-shuffle').disabled = !!shuffleDisabled;
   $('#btn-dlg-undo').disabled = !undoStack.length;
-  els.dlg.classList.add('open');
+  showOverlay(els.dlg);
   inputLocked = true;
   audio.dialog(); // §12.1 doom-thud
 }
 
 function closeDialogUIOnly() {
-  els.dlg.classList.remove('open');
+  hideOverlay(els.dlg);
   dialogOpen = false;
 }
 
@@ -639,12 +673,12 @@ function openPause() {
   inputLocked = true;
   $('#pause-sub').textContent = STR.pausedSub(chapterInfo.chapter, level.id);
   audio.dialog();
-  els.dlgPause.classList.add('open');
+  showOverlay(els.dlgPause);
 }
 
 function closePause({ silent = false } = {}) {
   if (!paused) return;
-  els.dlgPause.classList.remove('open');
+  hideOverlay(els.dlgPause);
   paused = false;
   inputLocked = state?.phase !== 'playing' || dialogOpen;
   if (!silent) audio.jingle(); // resume blip
@@ -659,7 +693,7 @@ $('#btn-pause').addEventListener('click', openPause);
 $('#btn-p-resume').addEventListener('click', () => closePause());
 $('#btn-p-restart').addEventListener('click', () => { closePause({ silent: true }); restart(reDealCounter); });
 $('#btn-p-settings').addEventListener('click', () => {
-  els.dlgPause.classList.remove('open'); // panel hides; paused stays true until back
+  hideOverlay(els.dlgPause); // panel hides; paused stays true until back
   goSettings('pause');
 });
 $('#btn-p-map').addEventListener('click', () => { closePause({ silent: true }); goMap(); });
@@ -689,7 +723,7 @@ $('#btn-reset-yes').addEventListener('click', () => {
     $('#btn-reset-yes').textContent = STR.resetConfirm;
     return;
   }
-  els.dlgReset.classList.remove('open');
+  hideOverlay(els.dlgReset);
   resetProgress(); // store back to pristine defaults
   syncBodyClasses();
   renderLevelSelect();
@@ -699,43 +733,11 @@ $('#btn-reset-yes').addEventListener('click', () => {
 });
 $('#btn-reset-cancel').addEventListener('click', () => {
   resetArmed = false; // leaving the dialog always re-arms fresh next time
-  els.dlgReset.classList.remove('open');
+  hideOverlay(els.dlgReset);
 });
 
 $('#btn-promo-cta').addEventListener('click', async () => {
-  els.dlgPromo.classList.remove('open');
+  hideOverlay(els.dlgPromo);
   try { await installEvent?.prompt(); } catch { /* UA refused — the copy already steered */ }
 });
-$('#btn-promo-later').addEventListener('click', () => els.dlgPromo.classList.remove('open'));
-
-/* ---------- dev-only probes for scripted verification (removed in M4). No
-   gameplay influence — only console-invoked. ---------- */
-window.__m1 = () => ({
-  phase: state?.phase ?? null,
-  score: state?.score ?? 0,
-  bank: state?.bank.map((b) => b?.face ?? null) ?? [],
-  onBoard: state?.positions.size ?? 0,
-  comboN: state?.comboN ?? 0,
-  inputLocked,
-});
-window.__m2 = () => ({
-  ...window.__m1(),
-  screen: currentScreen,
-  peek: openPeekId,
-  undoDepth: undoStack.length,
-  dialogOpen,
-  paused,
-  reDealCounter,
-});
-window.__m2dev = { openDialog: () => openNoProgressDialog(false), closeDialog };
-window.__m3dev = {
-  showPromo: () => { setProgressFlag('promoShown', false); audio.dialog(); els.dlgPromo.classList.add('open'); },
-  showTip: () => els.tip.classList.add('show'),
-  showPause: openPause,
-  showReset: openResetDialog,
-  goHome,
-  freeFaces: () => { // free tile faces for scripted win/fail driving (M4 removes all probes)
-    const f = freeIds(state);
-    return [...state.positions.values()].filter((t) => f.has(t.id)).map((t) => ({ id: t.id, face: t.face }));
-  },
-};
+$('#btn-promo-later').addEventListener('click', () => hideOverlay(els.dlgPromo));

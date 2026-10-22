@@ -35,6 +35,7 @@ export const STR = {
 
   // §13 storage-failure toast (one-time, non-blocking)
   saveToast: "Progress won't be saved in this browser mode 🍪",
+  portraitHint: 'Portrait is comfier 🍬 — rotate anytime', // §9.2 landscape-phone nudge, once per session
 
   // ======= M3 =======
 

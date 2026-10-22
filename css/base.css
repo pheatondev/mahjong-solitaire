@@ -11,6 +11,13 @@
 
 html, body { height: 100%; }
 
+/* §17 keyboard baseline: strong visible focus for real buttons/dialogs. */
+:focus-visible {
+  outline: 3px solid var(--accent, #ff5d8f);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 body {
   overflow: hidden;
   font-family: -apple-system, "SF Pro Rounded", ui-rounded, "Segoe UI", Roboto, system-ui, sans-serif;
