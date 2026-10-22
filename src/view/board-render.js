@@ -161,11 +161,18 @@ export function createBoardView(gridEl, areaEl) {
       el.classList.remove('blocked', 'deny');
       el.style.left = sx + 'px';
       el.style.top = sy + 'px';
+      // --t lives on #grid and is not inherited into #fx — size the flight explicitly
+      el.style.width = T + 'px';
+      el.style.height = T + 'px';
       el.style.transform = 'translate3d(0,0,0)';
+      // arrive at exactly the mini's reveal scale, so the land swap is seamless (§9.5)
+      const miniBox = Math.max(20, (slotEl.clientWidth - 6)); // slot border (2.5×2) + .mini inset (3×2)
+      const s0 = (miniBox * 0.86) / T; // mini-land 0% keyframe scale
+      el.style.transformOrigin = 'center';
       el.classList.add('flight');
       void el.offsetWidth; // commit the start pose — inserted elements need one reflow
       requestAnimationFrame(() => {
-        el.style.transform = `translate3d(${dx}px,${dy}px,0)`;
+        el.style.transform = `translate3d(${dx}px,${dy}px,0) scale(${s0})`;
       });
       // Landing resolution: transitionend when possible, timer otherwise —
       // prefers-reduced-motion flattens the transition, so the event may never fire.
@@ -197,7 +204,7 @@ export function createBoardView(gridEl, areaEl) {
 
 /** Bank ("tin") view: mini tiles, landing reveal, auto-pop, pre-seal warning tint (§9.5). */
 export function createBankView(bankEl) {
-  const slots = [...bankEl.children];
+  const slots = [...bankEl.querySelectorAll('.slot')]; // the label span must NOT shift slot indices
   const mini = (face) => {
     const m = document.createElement('div');
     m.className = `mini tface ${keyClass(face)}`;

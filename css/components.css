@@ -64,7 +64,7 @@
   background: rgba(255, 253, 247, 0.25);
 }
 .slot .mini { opacity: 0; } /* tile appears when its flight lands */
-.slot .mini.landed { opacity: 1; animation: mini-land 200ms ease-out; }
+.slot .mini.landed { opacity: 1; animation: mini-land 200ms ease-out forwards; } /* settled 78% (§9.5) */
 /* pre-seal warning tint on the OPEN slot — 3 distinct faces banked (§3.6/§9.5) */
 .slot.warn { border-color: #ff7b4a; background: rgba(255, 123, 74, 0.18); }
 
