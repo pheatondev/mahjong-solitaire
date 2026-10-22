@@ -45,8 +45,7 @@ export const STR = {
   homeLevels: '🍬 Levels',
   homeStats: '📊 Stats',
   homeSettings: '⚙️ Settings',
-  homeFootA: 'v1.0 · made with 🍬',
-  homeFootB: 'progress saved on this device · no ads, no tracking',
+  homeFoot: 'Made for Emmy, by Pads <3',
 
   // §9.4 levels extras
   backAria: 'Back',

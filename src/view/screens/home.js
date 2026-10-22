@@ -23,8 +23,7 @@ export function createHomeScr(root, { play, levels, stats, settings }) {
       <button class="menu-btn" id="hb-settings"></button>
     </nav>
     <footer class="home-foot">
-      <p>${STR.homeFootA}</p>
-      <p>${STR.homeFootB}</p>
+      <p>${STR.homeFoot}</p>
     </footer>`;
 
   const $ = (s) => root.querySelector(s);
