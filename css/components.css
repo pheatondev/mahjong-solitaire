@@ -339,7 +339,7 @@
   paint-order: stroke fill;
   text-shadow: 0 4px 0 rgba(74, 43, 58, 0.14);
 }
-.tagline { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--ink); opacity: .75; }
+
 .home-btns { display: flex; flex-direction: column; gap: 12px; width: 100%; align-items: center; }
 .menu-btn {
   width: 250px;
@@ -460,16 +460,6 @@
 }
 .switch[aria-checked="true"] { background: var(--good); }
 .switch[aria-checked="true"] i, .switch[aria-checked="true"] .knob { translate: 18px 0; }
-#set-about {
-  flex: none;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink);
-  opacity: .8;
-  padding: 4px 16px max(14px, env(safe-area-inset-bottom, 0px));
-}
-#set-about p { margin-top: 2px; }
 
 /* ---------- §9.4 first-run tooltip (candy note under the HUD) ---------- */
 .tipbubble {

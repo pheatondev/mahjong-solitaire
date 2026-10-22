@@ -2,7 +2,6 @@
    future localization (framework itself is a backlog item — §19). */
 
 export const STR = {
-  appName: 'Mahjong Lite',
   madeWith: 'made with 🍬',
   chip: (chapter, id) => `${chapter} · L${id}`,
 
@@ -40,7 +39,6 @@ export const STR = {
   // ======= M3 =======
 
   // §9.4 Home — logo lockup (CSS-only), frontier Play, quiet menu buttons
-  homeTagline: 'candy mahjong solitaire 🍬',
   homePlay: '▶ Play',
   homeLevels: '🍬 Levels',
   homeStats: '📊 Stats',
@@ -89,8 +87,6 @@ export const STR = {
   setReduce: 'Reduce motion',
   setReset: 'Reset progress',
   setResetHint: 'double-confirm',
-  setAboutA: 'Mahjong Lite v1.0 · no ads · no accounts · no tracking',
-  setAboutB: 'progress saved locally in this browser only 🍪',
   resetConfirmTitle: 'Reset all progress?',
   resetConfirmBody: 'Stars, bests and stats are wiped for this browser. No way back.',
   resetArm: 'Tap again to confirm',

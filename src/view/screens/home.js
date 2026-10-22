@@ -13,8 +13,7 @@ export function createHomeScr(root, { play, levels, stats, settings }) {
       <div class="logo-tiles">
         ${miniTile('b5', 'key-b', -11)}${miniTile('d3', 'key-d', 8)}${miniTile('drR', 'key-drR', -4)}
       </div>
-      <h1 class="wordmark">Mahjong<br>Lite</h1>
-      <p class="tagline">${STR.homeTagline}</p>
+      <h1 class="wordmark">Mahjong<br>Smoosh</h1>
     </div>
     <nav class="home-btns">
       <button class="menu-btn primary" id="hb-play"></button>

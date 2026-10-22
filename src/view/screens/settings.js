@@ -17,11 +17,7 @@ export function createSettingsScr(root, onChange, onResetRequest, onBack) {
       <h2 class="scr-title">${STR.setTitle}</h2>
     </header>
     <div id="set-rows"></div>
-    <footer id="set-about">
-      <p>${STR.setAboutA}</p>
-      <p>${STR.setAboutB}</p>
-    </footer>`;
-
+  `;
   root.querySelector('#set-back').addEventListener('click', onBack);
 
   const rowsEl = root.querySelector('#set-rows');

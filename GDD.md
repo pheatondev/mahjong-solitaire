@@ -6,7 +6,7 @@
 | **Genre** | Casual puzzle — mahjong solitaire (tile-matching) |
 | **Platform** | Web (mobile-first), static files on GitHub Pages |
 | **Reference game** | *Mahjong Blast* by Nebula Studio (iOS/Android) |
-| **Doc version** | v0.3.3 — user feedback: uniform tile size across all levels. §7.1 cols cap narrowed to exactly 8 and §14.2 fit made level-independent; all 60 layouts re-authored by `scripts/build-levels.mjs` (tile counts, names, hidden curve, §6 bands preserved). Supersedes v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets) |
+| **Doc version** | v0.3.3 — user feedback: uniform tile size across all levels. §7.1 cols cap narrowed to exactly 8 and §14.2 fit made level-independent; all 60 layouts re-authored by `scripts/build-levels.mjs` (tile counts, names, hidden curve, §6 bands preserved). UI copy per user (supersedes the §22 ship-time placeholder rename for this surface): Home wordmark = **Mahjong Smoosh**; tagline and Settings about lines removed. Supersedes v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets) |
 | **Date** | 2026-10-23 |
 | **Status** | Implementation-ready — this document is the build contract |
 | **Doc format** | Markdown (`.md`) — human-readable, LLM-readable, renders natively on GitHub |
