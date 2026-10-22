@@ -204,7 +204,7 @@ export function createBoardView(gridEl, areaEl) {
 
 /** Bank ("tin") view: mini tiles, landing reveal, auto-pop, pre-seal warning tint (§9.5). */
 export function createBankView(bankEl) {
-  const slots = [...bankEl.querySelectorAll('.slot')]; // the label span must NOT shift slot indices
+  const slots = [...bankEl.querySelectorAll('.slot')]; // only real slots — stray children must never shift slot indices
   const mini = (face) => {
     const m = document.createElement('div');
     m.className = `mini tface ${keyClass(face)}`;

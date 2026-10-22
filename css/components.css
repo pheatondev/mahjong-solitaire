@@ -291,19 +291,6 @@
 
 /* ================= M3 — screens, candy wordmark, settings, dialogs ================= */
 
-/* bank tin label (mock: small caps at the strip's left) */
-#bank-label {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  translate: 0 -50%;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--ink);
-  opacity: .45;
-}
-
 /* ---------- shared screen header (back · title) ---------- */
 .scr-head {
   display: flex; align-items: center; gap: 10px;
