@@ -317,7 +317,17 @@
 
 /* ---------- home (§9.4) ---------- */
 #scr-home { padding: 28px; }
-.home-top { display: flex; flex-direction: column; align-items: center; margin-top: 18px; margin-bottom: 26px; }
+/* v0.3.3 copy/layout: the lockup + menu center as one group against the full
+   stage height; the credit footer overlays the bottom edge (§9.4). */
+.home-mid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.home-top { display: flex; flex-direction: column; align-items: center; margin-bottom: 26px; }
 .logo-tiles { display: flex; gap: 8px; margin-bottom: 8px; }
 .logo-tile {
   position: relative;
@@ -363,7 +373,10 @@
   box-shadow: 0 4px 0 #d94a77, 0 8px 14px rgba(74, 43, 58, 0.28);
 }
 .home-foot {
-  margin-top: auto;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   text-align: center;
   font-size: 11px;

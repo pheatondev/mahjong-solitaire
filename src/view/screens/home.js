@@ -9,18 +9,20 @@ const miniTile = (face, key, deg) =>
 
 export function createHomeScr(root, { play, levels, stats, settings }) {
   root.innerHTML = `
-    <div class="home-top">
-      <div class="logo-tiles">
-        ${miniTile('b5', 'key-b', -11)}${miniTile('d3', 'key-d', 8)}${miniTile('drR', 'key-drR', -4)}
+    <div class="home-mid">
+      <div class="home-top">
+        <div class="logo-tiles">
+          ${miniTile('b5', 'key-b', -11)}${miniTile('d3', 'key-d', 8)}${miniTile('drR', 'key-drR', -4)}
+        </div>
+        <h1 class="wordmark">Mahjong<br>Smoosh</h1>
       </div>
-      <h1 class="wordmark">Mahjong<br>Smoosh</h1>
+      <nav class="home-btns">
+        <button class="menu-btn primary" id="hb-play"></button>
+        <button class="menu-btn" id="hb-levels"></button>
+        <button class="menu-btn" id="hb-stats"></button>
+        <button class="menu-btn" id="hb-settings"></button>
+      </nav>
     </div>
-    <nav class="home-btns">
-      <button class="menu-btn primary" id="hb-play"></button>
-      <button class="menu-btn" id="hb-levels"></button>
-      <button class="menu-btn" id="hb-stats"></button>
-      <button class="menu-btn" id="hb-settings"></button>
-    </nav>
     <footer class="home-foot">
       <p>${STR.homeFoot}</p>
     </footer>`;
