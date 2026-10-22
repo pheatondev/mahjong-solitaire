@@ -39,11 +39,12 @@ for (let i = 1; i <= 5; i++) {
 }
 const levels = chapters.flatMap((c) => c.levels);
 expect(levels.length === 60, `expected 60 levels, got ${levels.length}`);
-console.log(`sweep: ${levels.length} levels · seeds 0–2 each · plus §5 unit checks\n`);
+console.log(`sweep: ${levels.length} levels · seeds 0–9 each · plus §5 unit checks\n`);
 
-/* ---------- 1+2: deal sweep + solver backstop ---------- */
+/* ---------- 1+2: deal sweep + solver backstop
+   §22 policy: fixed-seed deal + 10 fresh-seed re-deals construct per level → seeds 0–9. */
 for (const lvl of levels) {
-  for (const seedStep of [0, 1, 2]) {
+  for (const seedStep of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
     let deal;
     try { deal = dealBoard(lvl, seedStep); } catch (e) {
       expect(false, `L${lvl.id} seed ${seedStep}: deal threw — ${e.message}`);
