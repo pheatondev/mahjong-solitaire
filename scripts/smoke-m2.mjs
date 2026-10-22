@@ -4,7 +4,8 @@
    2) §8.2/§8.3 solver backstop across seeds: never 'unsolvable' ('unknown' allowed)
    3) construction-order play wins on a band-spread sample (score within [1, P×325])
    4) §5.2 shuffleBoard: face multiset + positions preserved, hidden flags fixed;
-      an odd family group legitimately fails → null (the §5.3 escalation path)
+      an odd family group fails constructive shuffle → best-effort fallback re-pairs
+      it (§5.2 v0.3.1 ruling; the leave-as-is escalation survives only as a backstop)
    5) §5.3 isNoProgressState unit cases + §5.1 hintScan ladder kinds
    6) §5.4 snapshot ↔ stateFromSnapshot roundtrip parity, combo broken to ×0
    (DOM glue — peek order, flights, screens — is verified in-browser at the milestone). */
@@ -15,7 +16,7 @@ import { dirname, join } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const load = (rel) => import(join('file://', here, '../', rel));
 const { parseChapter } = await load('src/data/levels.js');
-const { dealBoard, shuffleBoard } = await load('src/core/dealer.js');
+const { dealBoard, shuffleBoard, shuffleBoardBestEffort } = await load('src/core/dealer.js');
 const {
   createGameState, bankTile, freeIds, snapshot, stateFromSnapshot,
 } = await load('src/core/state.js');
@@ -115,11 +116,52 @@ for (const id of [13, 30, 60]) { // samples from bands C, D, F
   }
 }
 {
-  // §5.2 rule 3: odd family group (6 tiles, faces d1 d1 d2 d2 d2 d3) → null → dialog path
+  // §5.2 v0.3.1: constructive shuffle keeps its odd → null semantics (main.js falls back)
   const odd = [];
   const faces6 = ['d1', 'd1', 'd2', 'd2', 'd2', 'd3'];
   faces6.forEach((face, i) => odd.push({ face, layer: 0, row: Math.floor(i / 2), col: i % 2 }));
-  expect(shuffleBoard(odd, 777) === null, 'odd family group must fail shuffle (§5.2 rule 3)');
+  expect(shuffleBoard(odd, 777) === null, 'odd family group must fail constructive shuffle (§5.2 rule 1)');
+  // §5.2 rule 2 best-effort: same odd multiset re-pairs — even part by construction,
+  // stranded faces (one d2, one d3) on individual positions; multiset/positions preserved
+  const reBe = shuffleBoardBestEffort(odd, 777);
+  expect(reBe, 'odd family group must shuffle best-effort (§5.2 rule 2)');
+  if (reBe) {
+    expect(!reBe.stray, 'even-position board must have no stray (§5.2)');
+    const key = (p) => `${p.layer}:${p.row}:${p.col}`;
+    const oddKey = new Set(odd.map((t) => key(t)));
+    expect(reBe.pairs.length === 3, 'best-effort keeps one slot per position pair');
+    expect(reBe.pairs.every((s) => oddKey.has(key(s.a)) && oddKey.has(key(s.b))),
+      'best-effort shuffle must stay on the remaining positions (§5.2)');
+    const applied = new Map();
+    for (const { a, b, faceA, faceB } of reBe.pairs) {
+      applied.set(key(a), faceA);
+      applied.set(key(b), faceB);
+    }
+    expect(odd.every((t) => applied.has(key(t))), 'every remaining position gets a face');
+    const fc = faceCounts([...applied.values()]);
+    expect(fc.get('d1') === 2 && fc.get('d2') === 3 && fc.get('d3') === 1,
+      'best-effort shuffle must preserve the face multiset (§5.2)');
+  }
+  // §5.2 rule 2, odd-POSITION board (bank 1/3 tiles → board count odd): one stray
+  const oddN = odd.slice(0, 5); // d1 d1 d2 d2 d2 (banked d3 strands its twin → d3 missing here)
+  const reN = shuffleBoardBestEffort(oddN, 999);
+  expect(reN, 'odd-position board must shuffle best-effort (§5.2 rule 2)');
+  if (reN) {
+    expect(reN.stray, 'odd-position board must leave exactly one stray');
+    if (reN.stray) {
+      const key = (p) => `${p.layer}:${p.row}:${p.col}`;
+      const applied = new Map();
+      for (const { a, b, faceA, faceB } of reN.pairs) {
+        applied.set(key(a), faceA);
+        applied.set(key(b), faceB);
+      }
+      applied.set(key(reN.stray.pos), reN.stray.face);
+      const fc = faceCounts([...applied.values()]);
+      expect(fc.get('d1') === 2 && fc.get('d2') === 3,
+        'odd-position shuffle must preserve the face multiset (§5.2)');
+      expect(applied.size === 5, 'every position (stray included) gets exactly one face');
+    }
+  }
 }
 
 /* ---------- 5: §5.3 trigger + §5.1 hint kinds (fabricated minimal states) ---------- */

@@ -6,8 +6,8 @@
 | **Genre** | Casual puzzle — mahjong solitaire (tile-matching) |
 | **Platform** | Web (mobile-first), static files on GitHub Pages |
 | **Reference game** | *Mahjong Blast* by Nebula Studio (iOS/Android) |
-| **Doc version** | v0.3.0 — full outsider read-through integration (§12.1 deny cue, §5.4 one-snapshot-per-tap, hint-vs-peek ruling, §15 bare-path SW rule, sample maps corrected, Play/lastPlayed reconciliation, misc cleanups) |
-| **Date** | 2026-10-22 |
+| **Doc version** | v0.3.1 — playtest ruling: §5.2 best-effort shuffle when the tin holds tiles (odd on-board multiset), constructive guarantee kept for even multisets |
+| **Date** | 2026-10-23 |
 | **Status** | Implementation-ready — this document is the build contract |
 | **Doc format** | Markdown (`.md`) — human-readable, LLM-readable, renders natively on GitHub |
 
@@ -260,10 +260,11 @@ All three boosters are **free and unlimited**. They live in the bottom bar (§9.
 ### 5.2 Shuffle 🔄
 
 - Redistributes remaining tile **faces** among remaining **positions** (positions & occupancy never change).
-- Guarantee policy (**locked ruling — shuffle re-deals by construction, no roulette, no solver**):
-  1. Take the multiset of faces currently on the board and re-pair it using the §8.1 **reverse-order construction restricted to the remaining positions** (seeded RNG: seed = `levelId × 7919 + reDealCounter`). Result: a re-dealt board that is **winnable by construction**, reusing the dealer's own code path.
-  2. Construction is stochastic with limited backtracking (§8.1); if it stalls on a degenerate remainder, retry with fresh RNG streams up to **10** attempts.
-  3. If construction still fails (very rare) → the board is left **as-is** and the no-progress dialog (§5.3) opens with Shuffle disabled — an unchanged board is strictly better than a random unguaranteed one.
+- Guarantee policy (**locked ruling — shuffle re-deals by construction, no roulette, no solver**; amended v0.3.1 — full-campaign playtest proved the by-construction path impossible whenever the tin holds tiles, since a banked single strands its twin and leaves the on-board multiset odd):
+  1. **Even multiset (tin empty — the common case):** take the multiset of faces currently on the board and re-pair it using the §8.1 **reverse-order construction restricted to the remaining positions** (seeded RNG: seed = `levelId × 7919 + reDealCounter`). Result: a re-dealt board that is **winnable by construction**, reusing the dealer's own code path.
+  2. **Odd multiset (tin holds at least one unpaired-family tile):** reverse-pair construction is mathematically impossible (each banked single leaves its twin unpairable on the board). Shuffle then runs **best-effort**: the pairable even part is re-paired by construction as above, and each stranded face takes a seeded slot — it will re-pair with its banked twin later. The result is **not** guaranteed winnable; §5.3's no-progress dialog remains the safety net. (Ruling: 2026-10-23 playtest decision.)
+  3. Construction is stochastic with limited backtracking (§8.1); if it stalls on a degenerate remainder, retry with fresh RNG streams up to **10** attempts.
+  4. If even the best-effort pass still fails (very rare — position-degenerate, parity-independent) → the board is left **as-is** and the no-progress dialog (§5.3) opens with Shuffle disabled — an unchanged board is strictly better than a random unguaranteed one.
 - Shuffles never touch bank contents: faces redistribute only among remaining **board** positions. The construction guarantee is board-level and conservative — any board-solvable order is playable through the bank (banking only stages tiles).
 - Shuffle is a pushable undo state (§5.4). Shuffle plays a whoosh + tile "constellation" animation (faces float briefly, then resettle).
 - **Manual** shuffle: also available proactively from the bottom bar anytime.
@@ -459,7 +460,7 @@ Notes: the free-check must use the *same* §3.1 predicate as gameplay — never 
 - After the pair-slot order and bag dealing (§8.1) are fixed, choose `hidden` positions among `P` via the seeded RNG — position choice is purely visual (any position is fair), constrained only by the §7.1 cap: `0 ≤ hidden ≤ floor(tiles / 4)`.
 - The historic "no all-hidden pair slots" invariant is **retired** in the bank world (§3.5 rule 4): both members of a hidden pair can be peeked and banked sequentially — each lands face-up in the bank — so double-hidden pairs are matchable everywhere and the dealer needs no special case for them.
 - The solver remains **unaware of visibility** — faces are fixed at deal time, and the bank only *stages* tiles, so all §8 guarantees hold unchanged: the dealt board is winnable by construction (§8.1), the post-deal solver backstop (§8.2) is conservative, and every board-solvable removal order is playable through the bank.
-- **Shuffles** redistribute faces among remaining board positions only; hidden-flags stay fixed to positions, bank contents are untouched, and the by-construction re-deal policy (§5.2) is unchanged.
+- **Shuffles** redistribute faces among remaining board positions only; hidden-flags stay fixed to positions, bank contents are untouched, and the re-deal policy (§5.2, v0.3.1: constructive when the on-board multiset is even, best-effort when a banked single strands its twin) is unchanged.
 
 ---
 

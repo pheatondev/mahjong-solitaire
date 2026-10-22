@@ -8,7 +8,7 @@ import { clamp } from './util.js';
 import {
   createGameState, bankTile, freeIds, hudStars, snapshot, stateFromSnapshot,
 } from './core/state.js';
-import { dealBoard, shuffleBoard } from './core/dealer.js';
+import { dealBoard, shuffleBoard, shuffleBoardBestEffort } from './core/dealer.js';
 import { posKey, isNoProgressState, hintScan } from './core/rules.js';
 import { solverCheck } from './core/solver.js';
 import { thresholds } from './core/score.js';
@@ -604,25 +604,37 @@ function doShuffle() {
     openPeekId = null;
   }
   const rem = [...state.positions.values()];
-  // re-pair the on-board face multiset by construction; seed = id×7919+counter (§14.4)
-  const re = shuffleBoard(rem, state.levelId * 7919 + reDealCounter);
-  if (!re) {
-    // §5.2 failure (rare: an odd family group sits banked): board left as-is,
-    // the §5.3 dialog opens with Shuffle disabled — locked escalation
+  // re-pair the on-board face multiset; seed = id×7919+counter (§14.4). Constructive
+  // when the multiset is even (always true with an empty tin); best-effort fallback
+  // when a banked single strands its twin (odd family group, §5.2 v0.3.1 ruling).
+  const seed = state.levelId * 7919 + reDealCounter;
+  const constructive = shuffleBoard(rem, seed);
+  let apply = constructive
+    ? { pairs: constructive.map((s) => ({ a: s.a, b: s.b, faceA: s.face, faceB: s.face })), stray: null }
+    : shuffleBoardBestEffort(rem, seed);
+  if (!apply) {
+    // construction stalled on all 10 streams (rare, position-degenerate): board left
+    // as-is, the §5.3 dialog opens with Shuffle disabled
     openNoProgressDialog(true);
     return;
   }
   undoPush(); // a successful shuffle is one undoable step (§5.4)
   reDealCounter += 1; // §14.4: the counter bumps on Shuffle
-  for (const { a, b, face } of re) {
-    for (const p of [a, b]) {
-      const t = state.positions.get(posKey(p.layer, p.row, p.col));
-      if (t) t.face = face; // positions + hidden flags never change (§5.2/§8.4)
-    }
+  const setFace = (p, f) => {
+    const t = state.positions.get(posKey(p.layer, p.row, p.col));
+    if (t) t.face = f; // positions + hidden flags never change (§5.2/§8.4)
+  };
+  for (const { a, b, faceA, faceB } of apply.pairs) {
+    setFace(a, faceA);
+    setFace(b, faceB);
   }
+  if (apply.stray) setFace(apply.stray.pos, apply.stray.face);
   const cols = Math.max(...level.layers.map((r) => r[0].length));
   const rows = Math.max(...level.layers.map((r) => r.length));
-  view.render(state.tiles);
+  // §5.2 render source: on-board occupants only — the live state's `tiles` array keeps
+  // banked/popped ids for lookup (tileById), and rendering them would resurrect banked
+  // tiles on the board (undo's snapshot-derived state is on-board-only, so it's safe).
+  view.render([...state.positions.values()]);
   view.fit(T, cols, rows);
   refreshBoard();
   els.grid.classList.add('shimmer');

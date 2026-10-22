@@ -182,8 +182,73 @@ export function shuffleBoard(remTiles, seed) {
     const slots = construct(positions, rng);
     if (!slots) continue;
     const faces = facesForSlots(shuffled(bag, rng), positions.length / 2);
-    if (!faces) return null; // odd family group → strictly better to leave the board (§5.2)
+    if (!faces) return null; // odd family group → caller falls back to best effort (§5.2)
     return slots.map((s, i) => ({ a: s.a, b: s.b, face: faces[i] }));
   }
   return null;
 }
+
+/**
+ * §5.2 best-effort shuffle (tin holds tiles): a banked single strands its twin, so the
+ * on-board multiset can be odd and reverse-pair construction impossible. Here the
+ * pairable (even) part reloads by construction and the stranded faces take seeded
+ * positions — each will re-pair with its banked twin later, so no construction
+ * guarantee; §5.3 stays the safety net. When the board holds an ODD number of tiles
+ * (bank odd-count), one position is left outside the pairing entirely (a "stray").
+ * Same seeding/attempt shape as shuffleBoard. Positions/occupancy/hidden never change.
+ * @returns {{ pairs: Array<{a,b,faceA,faceB}>, stray: {pos:{layer,row,col},face}|null }}
+ *   or null only if construction stalls on all 10 streams (position-degenerate,
+ *   parity-independent — caller leaves the board as-is, §5.2 rule 4).
+ */
+export function shuffleBoardBestEffort(remTiles, seed) {
+  const positionsAll = remTiles.map((t) => ({ layer: t.layer, row: t.row, col: t.col }));
+  const counts = new Map();
+  for (const t of remTiles) counts.set(t.face, (counts.get(t.face) ?? 0) + 1);
+  const pairable = []; // even cuts of every family — invariants keep strands per-family ≤ 1
+  const strands = [];
+  for (const [f, c] of counts) {
+    const pairs = Math.floor(c / 2);
+    for (let i = 0; i < pairs * 2; i++) pairable.push(f);
+    if (c % 2) strands.push(f);
+  }
+  const tileN = positionsAll.length;
+  const oddN = tileN % 2; // ⇔ strands.length is odd (parity of Σcounts = parity of S)
+  // stray pick (odd board only): top-layer position first — most likely reachable for
+  // its banked twin; face choice + tie-breaks come from the attempt-agnostic stream.
+  let stray = null;
+  if (oddN) {
+    const pickRng = mulberry32(seed);
+    const roll = () => pickRng();
+    const topMost = [...positionsAll]
+      .map((p) => ({ p, r: roll() }))
+      .sort((a, b) => (b.p.layer - a.p.layer) || (a.r - b.r));
+    strands.sort((a, b) => roll() - roll()); // which face strands off-pair
+    stray = { pos: topMost[0].p, face: strands.pop() };
+  }
+  const usable = oddN ? positionsAll.filter((p) => p !== stray.pos) : positionsAll;
+  const pureSlotN = (usable.length - strands.length) / 2; // same-face slots (integer here)
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    const rng = mulberry32(seed + attempt);
+    const slots = construct(usable, rng);
+    if (!slots) continue;
+    // seeded choice of which slots stay pure pairs; the tail goes to strand positions
+    const which = shuffled(slots.map((_, i) => i), rng).slice(0, pureSlotN);
+    const pure = new Set(which);
+    const pureFaces = facesForSlots(shuffled(pairable, rng), pureSlotN);
+    if (!pureFaces) continue; // unreachable on an even-cut bag (keeps the type honest)
+    const strandFaces = shuffled(strands, rng);
+    let pi = 0, si = 0;
+    const out = slots.map((s, i) => {
+      if (pure.has(i)) {
+        const f = pureFaces[pi++];
+        return { a: s.a, b: s.b, faceA: f, faceB: f };
+      }
+      // tail slot: one strand tile per position — strand families are distinct, so
+      // faceA ≠ faceB is guaranteed here; each re-pairs with its banked twin later
+      return { a: s.a, b: s.b, faceA: strandFaces[si++], faceB: strandFaces[si++] };
+    });
+    return { pairs: out, stray };
+  }
+  return null;
+}
+
