@@ -42,12 +42,14 @@ export function construct(positions, rng) {
   let stuckBudget = 400;
 
   while (remaining.length > 0) {
+    // §8.1 locked pseudocode: BOTH picks come from the same pre-removal free set —
+    // a pair the §8.3 solver could not take atomically would breach its backstop role.
     const free = remaining.filter((p) => isFree(remaining, p));
     if (free.length >= 2) {
       const p = weightedPick(free, remaining, rng); // soft heuristic: unblock the most
+      free.splice(free.indexOf(p), 1);
+      const q = weightedPick(free, remaining, rng);
       removeOne(remaining, p);
-      const free2 = remaining.filter((q) => isFree(remaining, q));
-      const q = weightedPick(free2.length ? free2 : remaining, remaining, rng);
       removeOne(remaining, q);
       pairSlots.push({ a: p, b: q });
     } else {
@@ -100,10 +102,33 @@ export function layoutPositions(layers) {
 }
 
 /**
+ * §8.1 step 4: assign one face per pair slot in generated order — the next family with
+ * ≥ 2 copies remaining in the (already shuffled) bag goes to that slot. Family counts in
+ * the bag are invariantly even (composeBag emits 4/2; slots consume 2), so the scan can
+ * never strand a positive family — it returns null only when the multiset itself cannot
+ * be slotted (an odd family group, possible on shuffle remainders §5.2).
+ */
+function facesForSlots(bag, slotCount) {
+  const counts = new Map();
+  for (const f of bag) counts.set(f, (counts.get(f) ?? 0) + 1);
+  const faces = [];
+  let ptr = 0;
+  for (let i = 0; i < slotCount; i++) {
+    while (ptr < bag.length && counts.get(bag[ptr]) < 2) ptr++; // next family with ≥ 2 copies
+    if (ptr >= bag.length) return null; // multiset not pairable → caller escalates per its section
+    const f = bag[ptr];
+    counts.set(f, counts.get(f) - 2); // both positions of the slot take the same face (§8.1 step 4)
+    faces.push(f);
+    ptr++;
+  }
+  return faces;
+}
+
+/**
  * Deal one board for a level + reDealCounter (seed = levelId × 7919 + reDealCounter, §14.4).
  * Order per §8.1: positions → reverse-order construction → bag compose → shuffle →
- * per pair slot: next family with ≥ 2 copies remaining. Flipped-tile hidden positions
- * (§8.4) are dealt in M2 (M1 levels have hidden: 0).
+ * per pair slot: next family with ≥ 2 copies remaining. Then §8.4: hidden positions are
+ * chosen among P by the same seeded stream AFTER the faces are fixed, capped at floor(tiles/4).
  */
 export function dealBoard(level, reDealCounter) {
   const positions = layoutPositions(level.layers);
@@ -117,19 +142,8 @@ export function dealBoard(level, reDealCounter) {
   if (!slots) throw new Error('deal stalled on all 10 attempts (§8.1) — check layout');
 
   const bag = shuffled(composeBag(positions.length), rng); // shuffle the bag (§8.1 step 3)
-  const counts = new Map();
-  for (const f of bag) counts.set(f, (counts.get(f) ?? 0) + 1);
-
-  const faces = [];
-  let ptr = 0;
-  for (let i = 0; i < slots.length; i++) {
-    while (ptr < bag.length && counts.get(bag[ptr]) < 2) ptr++; // next family with ≥ 2 copies
-    if (ptr >= bag.length) throw new Error('bag exhausted — deal bug');
-    const f = bag[ptr];
-    counts.set(f, counts.get(f) - 2); // both positions of the slot take the same face (§8.1 step 4)
-    faces.push(f);
-    ptr++;
-  }
+  const faces = facesForSlots(bag, slots.length); // parity structurally guaranteed on a fresh bag
+  if (!faces) throw new Error('fresh deal bag failed to slot — composeBag bug');
 
   const tiles = [];
   let id = 0;
@@ -137,5 +151,39 @@ export function dealBoard(level, reDealCounter) {
     tiles.push({ id: id++, face: faces[i], layer: s.a.layer, row: s.a.row, col: s.a.col });
     tiles.push({ id: id++, face: faces[i], layer: s.b.layer, row: s.b.row, col: s.b.col });
   });
-  return { tiles, tileCount: tiles.length, pairCount: tiles.length / 2 };
+
+  // §8.4: hidden positions, purely visual, any position is fair; no all-hidden-pair rule.
+  const hiddenN = Math.min(level.hidden ?? 0, Math.floor(tiles.length / 4));
+  if (hiddenN > 0) {
+    const order = shuffled(tiles, rng); // seeded stream continues after faces are fixed
+    const hiddenIds = new Set(order.slice(0, hiddenN).map((t) => t.id));
+    for (const t of tiles) if (hiddenIds.has(t.id)) t.hidden = true;
+  }
+  tiles.forEach((t) => { if (!t.hidden) t.hidden = false; });
+
+  // slots also returned for dev play-throughs (§8.1: reverse peel order = legal forward order)
+  return { tiles, tileCount: tiles.length, pairCount: tiles.length / 2, slots };
+}
+
+/**
+ * §5.2 shuffle: re-pair the multiset of faces currently on the board via reverse-order
+ * construction restricted to the remaining positions. Hidden flags stay fixed to
+ * positions (§8.4); positions/occupancy never change. Seeded: caller passes
+ * seed = levelId × 7919 + reDealCounter; 10 fresh RNG streams per the shared attempt loop.
+ * @returns Array<{a, b, face}> pair slots, or null when construction stalls or the
+ *   on-board multiset is not family-pairable (e.g. a lone twin sits banked, §5.2 rule 3 —
+ *   caller leaves the board as-is and escalates to the §5.3 dialog).
+ */
+export function shuffleBoard(remTiles, seed) {
+  const positions = remTiles.map((t) => ({ layer: t.layer, row: t.row, col: t.col }));
+  const bag = remTiles.map((t) => t.face);
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    const rng = mulberry32(seed + attempt); // fresh stream per attempt (§8.1 loop shape)
+    const slots = construct(positions, rng);
+    if (!slots) continue;
+    const faces = facesForSlots(shuffled(bag, rng), positions.length / 2);
+    if (!faces) return null; // odd family group → strictly better to leave the board (§5.2)
+    return slots.map((s, i) => ({ a: s.a, b: s.b, face: faces[i] }));
+  }
+  return null;
 }

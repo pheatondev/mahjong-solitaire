@@ -11,7 +11,30 @@ export const STR = {
   restart: '↻ Restart',
   failTitle: 'The tin overflowed! 🍬',
 
-  noPairsToast: 'No pairs in sight 🍬 — bank any free tile or Undo', // §5.1 ladder step 4 (M2)
+  // §9.4 level select (M2)
+  levelsTitle: 'Levels',
+  chapterHead: (name, lo, hi) => `${name} · ${lo}–${hi}`,
+  levelAria: (n, locked) => (locked ? `Level ${n}, locked` : `Level ${n}`),
+
+  // §5 boosters (M2)
+  mapBtn: '🗺', undoBtn: '↩', shuffleBtn: '🔄', hintBtn: '💡',
+  mapBtnAria: 'Level map', undoBtnAria: 'Undo', shuffleBtnAria: 'Shuffle', hintBtnAria: 'Hint',
+  next: (n) => `Next · L${n}`,
+  map: '🗺 Map',
+
+  // §5.1 hint ladder
+  noPairsToast: 'No pairs in sight 🍬 — bank any free tile or Undo',
+
+  // §5.3 no-progress dialog (§9.5 copy: inform and offer, never auto-play)
+  noProgTitle: 'No safe moves in sight 🍬',
+  noProgBody: 'Reshuffle the board, or take a step back?',
+  dlgShuffle: '🔄 Shuffle',
+  dlgUndo: '↩ Undo last bank',
+  dlgRestart: '↻ Restart level',
+  dlgMap: '🗺 Level map',
+
+  // §13 storage-failure toast (one-time, non-blocking)
+  saveToast: "Progress won't be saved in this browser mode 🍪",
 };
 
 /** A11y labels per family (§17: tiles get aria-label, e.g. "Blue dot tile, free"). */

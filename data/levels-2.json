@@ -1,0 +1,372 @@
+{
+  "chapter": "Blueberry",
+  "accent": "#7a5cff",
+  "levels": [
+    {
+      "id": 13,
+      "name": "Berry Basecamp",
+      "t2": null,
+      "t3": null,
+      "hidden": 1,
+      "layers": [
+        [
+          "...AAAAAAAA...",
+          "..AAAAAAAAAA..",
+          ".AAAAAAAAAAAA.",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA",
+          ".............."
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "....AAAAAA....",
+          ".............."
+        ]
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Fog Fountain",
+      "t2": null,
+      "t3": null,
+      "hidden": 1,
+      "layers": [
+        [
+          "....AAAAAA....",
+          "...AAAAAAAA...",
+          "..AAAAAAAAAA..",
+          ".AAAAAAAAAAAA.",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA"
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "......AA......"
+        ]
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Wing Flight",
+      "t2": null,
+      "t3": null,
+      "hidden": 1,
+      "layers": [
+        [
+          "AA..........AA",
+          "AAAA......AAAA",
+          "AAAAAA..AAAAAA",
+          "AAAAAA..AAAAAA",
+          "AAAAAA..AAAAAA",
+          "AAAA......AAAA",
+          "AA..........AA"
+        ],
+        [
+          "..............",
+          "..............",
+          "AAAA..........",
+          "..............",
+          "..............",
+          "..............",
+          ".............."
+        ]
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Wing Rally",
+      "t2": null,
+      "t3": null,
+      "hidden": 1,
+      "layers": [
+        [
+          "...AAAAAAAA...",
+          "..AAAAAAAAAA..",
+          ".AAAAAAAAAAAA.",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA",
+          ".............."
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "...AAAAAAAA...",
+          ".............."
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "......AA......",
+          ".............."
+        ]
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Crossroads Craving",
+      "t2": null,
+      "t3": null,
+      "hidden": 1,
+      "layers": [
+        [
+          "..AAAA..",
+          "..AAAA..",
+          "..AAAA..",
+          "..AAAA..",
+          "AAAAAAAA",
+          "AAAAAAAA",
+          "AAAAAAAA",
+          "AAAAAAAA",
+          "..AAAA..",
+          "..AAAA..",
+          "..AAAA..",
+          "..AAAA.."
+        ],
+        [
+          "........",
+          "........",
+          "........",
+          "........",
+          "..AAAA..",
+          "........",
+          "........",
+          "........",
+          "........",
+          "........",
+          "........",
+          "........"
+        ]
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Berry Bazaar",
+      "t2": null,
+      "t3": null,
+      "hidden": 2,
+      "layers": [
+        [
+          "..AAAA...",
+          "..AAAA...",
+          "..AAAA...",
+          "..AAAA...",
+          "AAAAAAAAA",
+          "AAAAAAAAA",
+          "AAAAAAAAA",
+          "AAAAAAAAA",
+          "..AAAA...",
+          "..AAAA...",
+          "..AAAA...",
+          "..AAAA..."
+        ],
+        [
+          ".........",
+          ".........",
+          ".........",
+          ".........",
+          "...AA....",
+          ".........",
+          ".........",
+          ".........",
+          ".........",
+          ".........",
+          ".........",
+          "........."
+        ]
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Heartbeat Hollows",
+      "t2": null,
+      "t3": null,
+      "hidden": 2,
+      "layers": [
+        [
+          "AA..........AA",
+          "AAAA......AAAA",
+          "AAAAAA..AAAAAA",
+          "AAAAAA..AAAAAA",
+          "AAAAAA..AAAAAA",
+          "AAAAAA..AAAAAA",
+          "AAAA......AAAA",
+          "AA..........AA"
+        ],
+        [
+          "..............",
+          "..............",
+          "AA............",
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          ".............."
+        ]
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Sugar Stack",
+      "t2": null,
+      "t3": null,
+      "hidden": 2,
+      "layers": [
+        [
+          ".AAA....AAA..",
+          "AAAAA..AAAAA.",
+          "..AAAAAAAAA..",
+          ".AAAAAAAAAAA.",
+          "AAAAAAAAAAAAA",
+          "AAAAAAAAAAAAA",
+          "..AAAAAAAAA..",
+          "....AAAAA...."
+        ],
+        [
+          ".............",
+          ".............",
+          ".............",
+          ".............",
+          ".....AA......",
+          ".............",
+          ".............",
+          "............."
+        ]
+      ]
+    },
+    {
+      "id": 21,
+      "name": "Twin Pillars",
+      "t2": null,
+      "t3": null,
+      "hidden": 2,
+      "layers": [
+        [
+          ".AAA....AAA..",
+          "AAAAA..AAAAA.",
+          "..AAAAAAAAA..",
+          ".AAAAAAAAAAA.",
+          "AAAAAAAAAAAAA",
+          "AAAAAAAAAAAAA",
+          ".AAAAAAAAAAA.",
+          "..AAAAAAAAA.."
+        ],
+        [
+          ".............",
+          ".............",
+          ".............",
+          ".............",
+          ".....AA......",
+          ".............",
+          ".............",
+          "............."
+        ]
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Riddle Rind",
+      "t2": null,
+      "t3": null,
+      "hidden": 3,
+      "layers": [
+        [
+          "....AAAA....",
+          "....AAAA....",
+          "....AAAA....",
+          "....AAAA....",
+          "AAAAAAAAAAAA",
+          "AAAAAAAAAAAA",
+          "AAAAAAAAAAAA",
+          "AAAAAAAAAAAA",
+          "....AAAA....",
+          "....AAAA....",
+          "....AAAA....",
+          "....AAAA...."
+        ],
+        [
+          "............",
+          "............",
+          "............",
+          "............",
+          ".....AA.....",
+          "............",
+          "............",
+          "............",
+          "............",
+          "............",
+          "............",
+          "............"
+        ]
+      ]
+    },
+    {
+      "id": 23,
+      "name": "Rest Stop",
+      "t2": null,
+      "t3": null,
+      "hidden": 3,
+      "layers": [
+        [
+          "...AAAAAAAA...",
+          "..AAAAAAAAAA..",
+          ".AAAAAAAAAAAA.",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA"
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "....AAAAAA...."
+        ]
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Jam Session",
+      "t2": null,
+      "t3": null,
+      "hidden": 3,
+      "layers": [
+        [
+          "...AAAAAAAA...",
+          "..AAAAAAAAAA..",
+          ".AAAAAAAAAAAA.",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA",
+          "AAAAAAAAAAAAAA"
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "....AAAAAA...."
+        ],
+        [
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          "..............",
+          ".....AAAA....."
+        ]
+      ]
+    }
+  ]
+}

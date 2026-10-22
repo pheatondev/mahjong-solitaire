@@ -46,6 +46,7 @@ export function bankTile(st, tile, now) {
   const slot = st.bank.indexOf(null);
   if (slot === -1) throw new Error('bank full while playing — impossible state');
   st.bank[slot] = tile;
+  tile.hidden = false; // banked tiles are face-up permanently (§3.5 rule 3)
 
   const twinSlot = st.bank.findIndex((t, i) => t && t !== tile && t.face === tile.face);
   const res = { slot, popped: null, sealed: false };
@@ -75,4 +76,44 @@ export function bankTile(st, tile, now) {
 /** Live star tier for the HUD projection (§9.4). */
 export function hudStars(st) {
   return projectedStars(st.score, st.t2, st.t3);
+}
+
+/**
+ * §5.4 pre-action snapshot, pushed at tap time: faces-per-position (+ hidden flags),
+ * bank contents, score. Combo state is deliberately never captured — any Undo breaks
+ * the chain to ×0 (locked). Ring buffer of 20 is managed by the caller (main.js).
+ */
+export function snapshot(st) {
+  return {
+    onBoard: [...st.positions.values()].map((t) => ({
+      face: t.face, hidden: !!t.hidden, layer: t.layer, row: t.row, col: t.col,
+    })),
+    bank: st.bank.map((b) => (b ? b.face : null)),
+    score: st.score,
+  };
+}
+
+/** Rebuild a full playing state from a snapshot (§5.4 walk-back). Fresh tile ids — the
+ *  view re-renders from scratch on undo, flights are cancelled by the caller. */
+export function stateFromSnapshot(snap, levelId, t2, t3) {
+  const tiles = snap.onBoard.map((p, i) => ({
+    id: i + 1, face: p.face, hidden: p.hidden, layer: p.layer, row: p.row, col: p.col,
+  }));
+  const positions = new Map();
+  for (const t of tiles) positions.set(posKey(t.layer, t.row, t.col), t);
+  let id = 100;
+  const bank = snap.bank.map((face) => {
+    if (face === null) return null;
+    return { id: id++, face, hidden: false }; // banked tiles are face-up permanently (§3.5)
+  });
+  return {
+    levelId, t2, t3,
+    tiles,
+    positions,
+    bank,
+    score: snap.score,
+    comboN: 0,            // undo breaks the combo (locked §5.4/§4.1)
+    comboUntil: -Infinity,
+    phase: 'playing',
+  };
 }

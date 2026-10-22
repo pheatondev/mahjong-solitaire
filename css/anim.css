@@ -51,6 +51,28 @@
    JS toggles .popping on the .mini so the base .78 occupied scale animates away. */
 .mini.popping { animation: slot-pop 260ms ease-out forwards; }
 
+/* ---- M2 keyframes ---- */
+
+/* peek/ghost flip: squash flat then breath open (scale property — transform stays the
+   translate3d placement, §14.2) */
+@keyframes tile-flip {
+  0%   { scale: 1 1; }
+  45%  { scale: 1.05 0.12; }
+  100% { scale: 1 1; }
+}
+
+/* hint glow: 2 pulses then fade — box-shadow only, never transform (works on .mini) */
+@keyframes hint-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+  50%      { box-shadow: 0 0 0 4px var(--accent), 0 0 14px 2px var(--accent); }
+}
+
+/* level-select frontier pulse (the next level to play) */
+@keyframes lvl-pulse {
+  0%, 100% { box-shadow: 0 3px 0 var(--tile-bone), 0 5px 8px rgba(74, 43, 58, 0.22); }
+  50%      { box-shadow: 0 3px 0 var(--tile-bone), 0 0 0 3px var(--accent), 0 0 12px var(--accent); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flight, .flight > svg { animation: none !important; transition: opacity 200ms !important; }
   .tile.deny { animation: none !important; filter: brightness(0.7); }

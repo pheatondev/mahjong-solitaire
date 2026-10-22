@@ -26,12 +26,20 @@ export function createBoardView(gridEl, areaEl) {
 
   function buildTileEl(t) {
     const el = document.createElement('div');
-    el.className = `tile tface ${keyClass(t.face)}`;
+    if (t.hidden) {
+      el.className = 'tile tface facedown';
+      el.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-back"/></svg>`;
+      // no family chip on a face-down tile: the keyline glaze would leak the face (§3.5)
+    } else {
+      el.className = `tile tface ${keyClass(t.face)}`;
+      el.innerHTML = svgFace(t.face);
+    }
     el.dataset.id = t.id;
-    el.innerHTML = svgFace(t.face);
     els.set(t.id, el);
     return el;
   }
+
+  const flights = new Set(); // { el, cancel } — in-air flights are cosmetic (§14.2)
 
   return {
     els,
@@ -62,7 +70,8 @@ export function createBoardView(gridEl, areaEl) {
       }
     },
 
-    /** Toggle .blocked + ARIA across on-board tiles (§9.5). */
+    /** Toggle .blocked + ARIA across on-board tiles (§9.5). Face-down tiles must not
+        leak their face through ARIA (§3.5) — they announce as covered tiles. */
     refreshFree(freeSet, onBoard) {
       for (const t of onBoard) {
         const el = els.get(t.id);
@@ -70,7 +79,8 @@ export function createBoardView(gridEl, areaEl) {
         const isFree = freeSet.has(t.id);
         el.classList.toggle('blocked', !isFree);
         el.setAttribute('role', 'button');
-        el.setAttribute('aria-label', `${faceName(t.face)} tile, ${isFree ? 'free' : 'blocked'}`);
+        const shown = t.hidden && !el.classList.contains('peeked');
+        el.setAttribute('aria-label', `${shown ? 'facedown' : faceName(t.face)} tile, ${isFree ? 'free' : 'blocked'}`);
       }
     },
 
@@ -83,6 +93,56 @@ export function createBoardView(gridEl, areaEl) {
 
     tileEl(id) {
       return els.get(id);
+    },
+
+    /** §3.5: flip a face-down tile face-up in place (peek) — back → real face. */
+    peek(t) {
+      const el = els.get(t.id);
+      if (!el) return;
+      el.classList.remove('facedown');
+      el.classList.remove('peeked');
+      void el.offsetWidth;
+      el.classList.add('peeked');
+      el.classList.add('flip');
+      setTimeout(() => el.classList.remove('flip'), 240);
+      el.innerHTML = svgFace(t.face);
+      el.setAttribute('aria-label', `${faceName(t.face)} tile, peeked`);
+    },
+
+    /** Flip a peeked (or ghost-previewed) tile back to its candy back. */
+    unpeek(t) {
+      const el = els.get(t.id);
+      if (!el || !el.classList.contains('peeked')) return;
+      el.classList.remove('peeked');
+      el.classList.add('facedown');
+      el.classList.add('flip');
+      setTimeout(() => el.classList.remove('flip'), 240);
+      // t.face must exist — hidden tiles carry their real dealt face in state
+      el.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-back"/></svg>`;
+      el.setAttribute('aria-label', 'facedown tile'); // next refreshFree adds free/blocked
+    },
+
+    /** §5.1 ghost-flip preview: show the dealt face briefly with the hint pulse, then
+     *  restore the back — unless `keepShowing()` says the tile became a real peek. */
+    ghostFlip(t, keepShowing) {
+      const el = els.get(t.id);
+      if (!el) return;
+      this.peek(t);
+      this.pulse(el); // 2 pulses then fade (§5.1)
+      setTimeout(() => { if (!keepShowing()) this.unpeek(t); }, 1150);
+    },
+
+    /** Hint pulse: 2 pulses then fade (pure glow — no transform, safe on minis too). */
+    pulse(el) {
+      if (!el) return;
+      el.classList.remove('hint');
+      void el.offsetWidth;
+      el.classList.add('hint');
+      const done = () => { el.classList.remove('hint'); };
+      let n = 0;
+      const iter = () => { n += 1; if (n < 2) { void el.offsetWidth; } else el.removeEventListener('animationiteration', iter); };
+      el.addEventListener('animationiteration', iter);
+      setTimeout(done, 1500); // 2 × 700 ms pulses + fade margin (§9.5 ≤ 400 ms rarely held — hint glows are presentation-only)
     },
 
     /** Purely cosmetic: bank-flight of `el` from its board spot to slot `slot`.
@@ -111,11 +171,24 @@ export function createBoardView(gridEl, areaEl) {
       const land = () => {
         if (landed) return;
         landed = true;
-        onLanded(); // pop/serve logic resolves at landing (§3.3 tap-order ledger)
+        flights.delete(f);
+        // pop/serve logic resolves at landing (§3.3 tap-order ledger)
+        onLanded();
         el.remove();
       };
+      const f = { cancel: () => { landed = true; el.remove(); } };
+      flights.add(f);
       el.addEventListener('transitionend', land, { once: true });
       setTimeout(land, 380); // ≥ the 350 ms flight budget (§16)
+    },
+
+    /** Tear down all in-air flights without resolving them (undo / shuffle / new deal
+     *  replace the state wholesale — the flight's onLanded must never fire afterwards). */
+    cancelFlights() {
+      for (const f of flights) f.cancel();
+      flights.clear();
+      const fx = document.getElementById('fx');
+      fx.querySelectorAll('.tile.flight').forEach((el) => el.remove());
     },
   };
 }
@@ -161,6 +234,20 @@ export function createBankView(bankEl) {
     clearAll() {
       slots.forEach((s) => s.querySelectorAll('.mini').forEach((m) => m.remove()));
       slots.forEach((s) => s.classList.remove('warn'));
+    },
+
+    /** Resync the tin from state (§5.4 undo / §5.2 shuffle keep bank contents; undo
+     *  restores a previous arrangement). All minis land instantly, no flights. */
+    syncBank(bankFaces) {
+      slots.forEach((s) => s.querySelectorAll('.mini').forEach((m) => m.remove()));
+      slots.forEach((s) => s.classList.remove('warn'));
+      bankFaces.forEach((face, i) => {
+        if (!face) return;
+        const m = mini(face);
+        m.classList.remove('pending');
+        m.classList.add('landed');
+        slots[i].appendChild(m);
+      });
     },
 
     /** Pre-seal telegraph (§3.6/§9.5): when 3 DISTINCT faces are banked, the open

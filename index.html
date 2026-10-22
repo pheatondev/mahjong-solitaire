@@ -22,7 +22,16 @@
 
   <!-- The locked 9:16 stage (§9.1): all layout math is 390×844 design px, uniformly scaled. -->
   <div id="stage">
+
+    <!-- §9.4 Level select — M2 boots here (Home screen arrives in M3). -->
+    <section id="scr-levels" class="screen hidden" aria-label="Level select">
+      <header id="lvl-head"><h2 id="lvl-title"></h2></header>
+      <div id="lvl-scroll"></div>
+    </section>
+
+    <section id="scr-game" class="screen" aria-label="Game">
     <header id="hud">
+      <button id="btn-map" class="hbtn" aria-label="Level map">🗺</button>
       <span id="chip">Melon · L1</span>
       <div id="hud-right">
         <span id="stars" aria-label="Live star projection"></span>
@@ -45,9 +54,13 @@
     </main>
 
     <footer id="bar">
-      <!-- M1: reshuffle the rules loop + free fresh-deal Restart (§3.6). Undo/Shuffle/Hint are M2. -->
-      <button id="btn-restart" class="btn wide">↻ Restart</button>
+      <!-- §5 boosters (all player-tapped, no auto-assist — §2.4/§5) + free Restart (§3.6) -->
+      <button id="btn-undo" class="btn round" aria-label="Undo">↩</button>
+      <button id="btn-shuffle" class="btn round" aria-label="Shuffle">🔄</button>
+      <button id="btn-hint" class="btn round" aria-label="Hint">💡</button>
+      <button id="btn-restart" class="btn round" aria-label="Restart">↻</button>
     </footer>
+    </section><!-- /scr-game -->
 
     <div id="fx" aria-hidden="true"></div>
 
@@ -58,16 +71,41 @@
           <span class="st">★</span><span class="st">★</span><span class="st">★</span>
         </div>
         <div id="win-score">0</div>
-        <div class="bigbtns"><button id="btn-replay" class="btn wide"></button><button id="btn-restart2" class="btn wide"></button></div>
+        <div class="bigbtns">
+          <button id="btn-next" class="btn wide"></button>
+          <button id="btn-replay" class="btn wide"></button>
+          <button id="btn-map2" class="btn wide"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- §5.3 no-progress dialog: fires on the strict pre-seal state only; modal, no
+         scrim-dismiss (locked). Buttons mirror the §5 ladder — nothing auto-plays. -->
+    <div id="dlg-nopro" class="overlay" role="dialog" aria-modal="true" aria-labelledby="nopro-title">
+      <div class="panel">
+        <h2 id="nopro-title"></h2>
+        <p id="nopro-body"></p>
+        <div class="bigbtns colbtns">
+          <button id="btn-dlg-shuffle" class="btn wide"></button>
+          <button id="btn-dlg-undo" class="btn wide"></button>
+          <button id="btn-dlg-restart" class="btn wide"></button>
+          <button id="btn-dlg-map" class="btn wide"></button>
+        </div>
       </div>
     </div>
 
     <div id="ovl-fail" class="overlay" role="dialog" aria-modal="true" aria-labelledby="fail-title">
       <div class="panel">
         <h2 id="fail-title"></h2>
-        <div class="bigbtns"><button id="btn-fail-restart" class="btn wide"></button></div>
+        <div class="bigbtns">
+          <button id="btn-fail-restart" class="btn wide"></button>
+          <button id="btn-fail-map" class="btn wide"></button>
+        </div>
       </div>
     </div>
+
+    <!-- §13 storage-failure toast (one-time, non-blocking) -->
+    <div id="toast" role="status" aria-live="polite"></div>
   </div>
 
   <!-- Tile face sprite (§11): ALL faces are inline SVG symbols — zero raster assets, no extra requests.
@@ -87,6 +125,15 @@
         <rect x="-3.5" y="2.5" width="7" height="1.6" fill="#17692f" opacity=".35"/>
       </g>
     </defs>
+
+    <!-- §3.5 face-down back: candy stripes in the chapter accent (CSS vars cascade into
+         <use> shadow trees, so one symbol re-tints per chapter automatically). Same
+         in-browser rasterization as §15 icons — zero extra requests. -->
+    <symbol id="tile-back" viewBox="0 0 100 100">
+      <path d="M18,16 Q30,50 18,84 M40,14 Q52,50 40,86 M62,14 Q74,50 62,86 M82,16 Q90,50 84,84"
+            fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" opacity=".8"/>
+      <circle cx="50" cy="50" r="8" fill="var(--accent)" opacity=".9"/>
+    </symbol>
 
     <!-- Dots 1–9 — rank-count candy dots, rank-4 = clover arrangement (§11). Keyline blue #4aa3ff. -->
     <symbol id="tile-d1" viewBox="0 0 100 100"><circle cx="50" cy="50" r="15" fill="url(#gdot)"/><circle cx="45.8" cy="44.9" r="4.5" fill="#fff" opacity=".7"/></symbol>
@@ -121,11 +168,12 @@
     <symbol id="tile-c8" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">八</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
     <symbol id="tile-c9" viewBox="0 0 100 100"><text x="50" y="44" font-size="42" font-weight="700" text-anchor="middle" fill="#e1333f">九</text><text x="50" y="88" font-size="34" font-weight="700" text-anchor="middle" fill="#e1333f">萬</text></symbol>
 
-    <!-- Winds — letter tile + compass needle (§11). Keyline indigo #7a5cff (one glaze row for winds). -->
+    <!-- Winds — letter tile + compass needle (§11). Wind rule (user-ruled for §14 legibility):
+         4 distinguishable glazes near indigo/violet; keyline chip stays indigo #7a5cff. -->
     <symbol id="tile-wE" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">E</text></symbol>
-    <symbol id="tile-wS" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">S</text></symbol>
-    <symbol id="tile-wW" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">W</text></symbol>
-    <symbol id="tile-wN" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#7a5cff" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#7a5cff"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">N</text></symbol>
+    <symbol id="tile-wS" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#5b8def" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#5b8def"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">S</text></symbol>
+    <symbol id="tile-wW" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#a855f7" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#a855f7"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">W</text></symbol>
+    <symbol id="tile-wN" viewBox="0 0 100 100"><g transform="translate(50,24)"><circle r="9.5" fill="none" stroke="#6e56cf" stroke-width="3.5"/><path d="M0,-6.5 L3.2,7 L0,3.8 L-3.2,7 Z" fill="#6e56cf"/></g><text x="50" y="80" font-size="50" font-weight="800" text-anchor="middle" fill="#4a2b3a">N</text></symbol>
 
     <!-- Dragons — Red 中, Green 發, White empty blue-lined frame (§11). -->
     <symbol id="tile-drR" viewBox="0 0 100 100"><rect x="22" y="22" width="56" height="56" rx="6" fill="none" stroke="#ff4d4d" stroke-width="5"/><text x="50" y="68" font-size="46" font-weight="700" text-anchor="middle" fill="#ff4d4d">中</text></symbol>

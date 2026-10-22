@@ -31,22 +31,28 @@ for (let reDeal = 0; reDeal < 10; reDeal++) {
   const sv = solverCheck(snap);
   expect(sv.result === 'solvable', `deal ${reDeal}: solver says '${sv.result}' (nodes ${sv.nodes})`);
 
-  // greedy play-out through the bank — every dealt board is winnable by construction
+  // Play in the DEAL ORDER: construct peels pairs that are free in the remaining set —
+  // the peel order read forward is exactly the legal play order (§8.1). Consecutive-pair
+  // banking keeps the tin ≤ 1 tile, so the run always wins.
   const st = createGameState(lvl, deal);
-  let pops = 0, now = 0, aborted = null;
-  while (st.positions.size > 0) {
-    const free = [...st.positions.values()].filter((t) => freeIds(st).has(t.id));
-    if (!free.length) { aborted = 'no free taps (deal bug)'; break; }
-    const pick = free.find((t) => st.bank.some((b) => b && b.face === t.face)) || free[0];
+  const P = lvl.tileCount / 2;
+  let now = 0, pops = 0, aborted = null;
+  for (const s of deal.slots) {
+    const a = st.positions.get(`${s.a.layer},${s.a.row},${s.a.col}`);
+    const b = st.positions.get(`${s.b.layer},${s.b.row},${s.b.col}`);
+    if (!a || !b) { aborted = 'construction order not legal (tile missing)'; break; }
     now += 2000; // stays inside the 5 s window → chain capping is exercised below ×10
-    const r = bankTile(st, pick, now);
-    if (r.popped) pops++;
-    else if (r.sealed) { aborted = 'sealed mid-greedy-run (deal bug)'; break; }
+    const r1 = bankTile(st, a, now);
+    now += 2000;
+    const r2 = bankTile(st, b, now);
+    if (r1.popped || r2.sealed) { aborted = 'first-of-pair popped/sealed (construction bug)'; break; }
+    if (r2.popped) pops++;
   }
   expect(!aborted, `deal ${reDeal}: aborted — ${aborted}`);
-  expect(st.phase === 'won', `deal ${reDeal}: greedy play did not WIN (phase ${st.phase})`);
-  // combo capped at 10 → per-pop max 325; P=8 pairs
-  expect(st.score > 0 && st.score <= 8 * 325, `deal ${reDeal}: score ${st.score} out of bounds`);
+  expect(st.phase === 'won', `deal ${reDeal}: construct-order play did not WIN (phase ${st.phase})`);
+  expect(pops === P, `deal ${reDeal}: expected ${P} pops, got ${pops}`);
+  // combo capped at 10 → per-pop max 325 (§4.1)
+  expect(st.score > 0 && st.score <= P * 325, `deal ${reDeal}: score ${st.score} out of bounds`);
 }
 
 // §4.1 ladder math direct: n=1 →100, n=2 →125; expiry resets to n=1; cap at ×10 → 325
@@ -67,29 +73,24 @@ for (let reDeal = 0; reDeal < 10; reDeal++) {
 
 // combo math via matchScore semantics is covered by score.js; window expiry reset:
 {
-  const deal = dealBoard(lvl, 123);
+  const deal = dealBoard(lvl, 0);
   const st = createGameState(lvl, deal);
-  // two real twins along greedy play to verify ladder increments then expiry reset
-  let now = 0, firstN = null, afterExpiryN = null;
-  for (const pickOrder of [0, 1]) {
-    while (st.positions.size > 0) {
-      const free = [...st.positions.values()].filter((t) => freeIds(st).has(t.id));
-      if (!free.length) break;
-      const twin = free.find((t) => st.bank.some((b) => b && b.face === t.face));
-      const pick = twin || free[pickOrder % free.length];
-      if (twin) {
-        now += pickOrder === 0 ? 1000 : 9000; // 2nd match outside window → expiry reset path
-        const r = bankTile(st, pick, now);
-        if (!firstN && r.popped) firstN = st.comboN;
-        else if (r.popped && pickOrder === 1) afterExpiryN = st.comboN;
-        continue;
-      }
-      now += 500; bankTile(st, pick, now);
-    }
-    if (st.positions.size === 0 && st.bank.every((b) => !b)) break;
+  // two real pops then expiry reset — construct-order pops exercise the ladder directly
+  let now = 0;
+  const seen = [];
+  for (const s of deal.slots.slice(0, 3)) {
+    const a = st.positions.get(`${s.a.layer},${s.a.row},${s.a.col}`);
+    const b = st.positions.get(`${s.b.layer},${s.b.row},${s.b.col}`);
+    now += 1000; bankTile(st, a, now);
+    now += pickGap(seen.length); bankTile(st, b, now);
+    seen.push(st.comboN);
   }
-  if (firstN != null) expect(firstN === 1 || firstN === 2, `combo: unexpected first n ${firstN}`);
-  if (afterExpiryN != null) expect(afterExpiryN === 1, `combo: expiry did not reset (n=${afterExpiryN})`);
+  function pickGap(i) { return i === 1 ? 9000 : 500; } // 2nd pop outside the window → expiry reset
+  expect(seen.length === 3, 'combo: play did not produce 3 pops');
+  if (seen.length === 3) {
+    expect(seen[0] === 1 && seen[1] === 1, `combo: expiry did not reset (n=${seen[1]})`);
+    expect(seen[2] === 2, `combo: ladder did not step to ×2 (n=${seen[2]})`);
+  }
 }
 
 console.log(failures === 0 ? 'SMOKE OK — rules core behaves per §3/§4/§8' : `SMOKE FAILURES: ${failures}`);
