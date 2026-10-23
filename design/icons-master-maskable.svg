@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Mahjong Lite §15 maskable icon master (v0.3.4): full-bleed canvas, tile held
+       inside the 80% safe-zone circle (content half-diagonal ≤ 205 px). Also the
+       apple-touch-icon source (iOS rounds corners itself). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd9e8"/>
+      <stop offset="1" stop-color="#ffadc6"/>
+    </linearGradient>
+    <filter id="ds" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#4a2b3a" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <image href="../assets/tiles/Red.png" x="141.7" y="96" width="228.6" height="320"
+         style="image-rendering:pixelated" filter="url(#ds)"/>
+</svg>

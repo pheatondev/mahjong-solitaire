@@ -1,18 +1,18 @@
 /* home.js — §9.4 Home: the game's front porch. Play = the frontier level (§3.4:
    a mid-level quit abandons the attempt, so "continue" always means unlocked). */
 import { STR } from '../../data/i18n.js';
+import { faceFile } from '../../data/assets.js';
 
-const miniTile = (face, key, deg) =>
-  `<div class="logo-tile tface" style="rotate:${deg}deg" aria-hidden="true">` +
-  `<i class="chip ${key}"></i>` +
-  `<svg viewBox="0 0 100 100"><use href="#tile-${face}"/></svg></div>`;
+const miniTile = (face, deg) =>
+  `<div class="logo-tile" style="rotate:${deg}deg" aria-hidden="true">` +
+  `<img src="${faceFile(face)}" alt="" draggable="false"></div>`;
 
 export function createHomeScr(root, { play, levels, stats, settings }) {
   root.innerHTML = `
     <div class="home-mid">
       <div class="home-top">
         <div class="logo-tiles">
-          ${miniTile('b5', 'key-b', -11)}${miniTile('d3', 'key-d', 8)}${miniTile('drR', 'key-drR', -4)}
+          ${miniTile('b5', -11)}${miniTile('d3', 8)}${miniTile('drR', -4)}
         </div>
         <h1 class="wordmark">Mahjong<br>Smoosh</h1>
       </div>

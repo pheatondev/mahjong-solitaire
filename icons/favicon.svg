@@ -1,11 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Mahjong Lite favicon: candy tile face only (no wordmark — unreadable at 16 px).
-       Same faces as the shipped icon set: ivory tile, bone shadow edge, 3 blue dots, pink keyline. -->
-  <rect x="9" y="11" width="46" height="46" rx="10" fill="#d9c2a4"/>
-  <rect x="9" y="9" width="46" height="46" rx="10" fill="#fffdf7"/>
-  <rect x="13" y="13" width="38" height="38" rx="8" fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="2"/>
-  <circle cx="23" cy="30" r="5.5" fill="#4aa3ff"/>
-  <circle cx="32" cy="30" r="5.5" fill="#4aa3ff"/>
-  <circle cx="41" cy="30" r="5.5" fill="#4aa3ff"/>
-  <rect x="21" y="41" width="22" height="4" rx="2" fill="#ff5d8f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 28">
+  <!-- Mahjong Lite favicon (v0.3.4): the sprite art itself, inlined as a data URI.
+       No wordmark — unreadable at 16 px. Hand-once from assets/tiles/Red.png;
+       regenerate if the sprite changes. -->
+  <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAcBAMAAACT9IJTAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAVUExURf///wAAAJVERKwyMv///6wyMmlqaidlVpgAAAAEdFJOUwAAAACzk2aaAAAAAWJLR0QAiAUdSAAAAAd0SU1FB+kEFQ8qJ67l3/kAAABHSURBVBjTY2BwgQJGBhYY0wEu6OICYYYQy3QNBQEwMwSKSGQimUCKxcQwXdCZKTCWG0MajJnGEJYGBakMqjBmMINRKBQoAgC/kE7eHLMvuwAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNS0wNC0yMVQxNTo0MjoxNSswMDowMH63Q2UAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjUtMDQtMjFUMTU6NDI6MTUrMDA6MDAP6vvZAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI1LTA0LTIxVDE1OjQyOjM4KzAwOjAwew28uwAAAABJRU5ErkJggg==" width="20" height="28" style="image-rendering:pixelated"/>
 </svg>

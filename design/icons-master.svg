@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Mahjong Lite §15 icon master (v0.3.4): sprite-art tile on the bubblegum canvas.
+       Face: Red dragon (中) — readable at every size. Rasterized in-browser only
+       (design/tools/capture-icon.html) — no external image tools. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd9e8"/>
+      <stop offset="1" stop-color="#ffadc6"/>
+    </linearGradient>
+    <filter id="ds" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#4a2b3a" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <image href="../assets/tiles/Red.png" x="111.7" y="54" width="288.6" height="404"
+         style="image-rendering:pixelated" filter="url(#ds)"/>
+</svg>

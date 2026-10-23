@@ -17,6 +17,8 @@
 ## Locked GDD rulings agents would otherwise violate
 
 - **DOM rendering, no canvas engine**; one `div.tile` per tile (`z-index = 100 + layer × 10`, transform-only animation).
+- **Tiles are portrait 5:7 sprite `<img>`s** from `assets/tiles/*.png` (face→file map in `src/data/assets.js`, GDD §10.3 v0.3.4); fit is the level-independent pair `{w, h}` (`th = clamp(min((aw/8)×7/5, (ah − 4·7)/12), 26, 84)`); each layer sits `DY = 7` design px above the one below (`--ty = row·th − layer·DY`) — no CSS rim/shadow/chip stacks on tiles.
+- **Hidden tiles are flat solid slate `#4a3f52`** (CSS `.back`) — no patterns, no `#tile-back` symbol (GDD §3.5).
 - The DFS **solver is generation-time only** — never runs during gameplay (GDD §8.3).
 - There is **no selection state**: every tap on a free tile banks it instantly (logical celles freed at tap time; flight to bank is cosmetic, GDD §3.3/§14.2).
 - Deal RNG is deterministic mulberry32, seed = `levelId × 7919 + reDealCounter`; counter bumps on Restart and Shuffle (GDD §14.4).
@@ -37,5 +39,5 @@
 
 - `design/screens/*.svg` and `design/tile-face-specimen.svg` are outputs of the Python scripts in `design/tools/` — change the scripts and regenerate rather than editing the SVGs.
 - Gotcha: `design/tools/gen-screen-mockups.py` writes to a hardcoded Windows `OUTDIR` (`C:\R\OpenCode Projects\...`); fix it to the current repo path before running.
-- PNGs under `design/screens/png/` are browser-rendered from the SVGs via `design/tools/capture.html` (screenshot with scale-to-fit); same in-browser rasterization pipeline is the locked method for PWA icons (GDD §15).
+- PNGs under `design/screens/png/` are browser-rendered from the SVGs via `design/tools/capture.html` (screenshot with scale-to-fit); PWA icons rasterize from `design/icons-master[-maskable].svg` via `design/tools/capture-icon.html` + canvas/`<a download>` — the same in-browser rasterization pipeline is the locked method for icons (GDD §15).
 - Mockups use the locked 390×844 stage and palette tokens from GDD §9.4/§10.2.

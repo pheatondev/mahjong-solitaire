@@ -7,7 +7,7 @@
      cache-name bump (VERSION below): the new deploy misses, repopulates, and activate
      deletes the old-named cache. Players get the new version on their next visit. */
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.0.1'; // v0.3.4: sprite-art release
 const CACHE = `mahjonglite-${VERSION}`;
 
 /* Every file the shell needs — anything not listed here is simply never cached. */
@@ -28,6 +28,7 @@ const ASSETS = [
   './src/core/score.js',
   './src/data/levels.js',
   './src/data/i18n.js',
+  './src/data/assets.js',
   './src/data/store.js',
   './src/view/board-render.js',
   './src/view/level-select.js',
@@ -42,6 +43,41 @@ const ASSETS = [
   './data/levels-3.json',
   './data/levels-4.json',
   './data/levels-5.json',
+  // §10.3 sprite art (v0.3.4): 34 face PNGs, gameplay-critical offline assets
+  './assets/tiles/Circles1.png',
+  './assets/tiles/Circles2.png',
+  './assets/tiles/Circles3.png',
+  './assets/tiles/Circles4.png',
+  './assets/tiles/Circles5.png',
+  './assets/tiles/Circles6.png',
+  './assets/tiles/Circles7.png',
+  './assets/tiles/Circles8.png',
+  './assets/tiles/Circles9.png',
+  './assets/tiles/Bamboo1.png',
+  './assets/tiles/Bamboo2.png',
+  './assets/tiles/Bamboo3.png',
+  './assets/tiles/Bamboo4.png',
+  './assets/tiles/Bamboo5.png',
+  './assets/tiles/Bamboo6.png',
+  './assets/tiles/Bamboo7.png',
+  './assets/tiles/Bamboo8.png',
+  './assets/tiles/Bamboo9.png',
+  './assets/tiles/Characters1.png',
+  './assets/tiles/Characters2.png',
+  './assets/tiles/Characters3.png',
+  './assets/tiles/Characters4.png',
+  './assets/tiles/Characters5.png',
+  './assets/tiles/Characters6.png',
+  './assets/tiles/Characters7.png',
+  './assets/tiles/Characters8.png',
+  './assets/tiles/Characters9.png',
+  './assets/tiles/East.png',
+  './assets/tiles/South.png',
+  './assets/tiles/West.png',
+  './assets/tiles/North.png',
+  './assets/tiles/Red.png',
+  './assets/tiles/Green.png',
+  './assets/tiles/White.png',
   './icons/favicon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',

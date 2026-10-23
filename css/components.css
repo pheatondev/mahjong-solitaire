@@ -73,67 +73,55 @@
 #grid { position: absolute; }
 #grid.shimmer { animation: board-shimmer 260ms ease-in-out; }
 
-/* ---------- tiles (DOM: one div.tile per tile, §14.2) ---------- */
-.tface {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%),
-    var(--tile-face);
-  border-radius: 22%;
-  /* extruded edge via layered shadows — 3D-lite, no textures (§10.3) */
-  box-shadow:
-    inset 0 0 0 1.5px rgba(255, 255, 255, 0.9),          /* 2px-ish inner white rim */
-    0 3px 0 var(--tile-bone),                            /* extruded side */
-    0 6px 10px rgba(74, 43, 58, 0.30);                   /* soft drop */
-}
+/* ---------- tiles (§14.2; v0.3.4 = user-supplied pixel-art portrait sprites) ---------- */
 .tile {
   position: absolute;
-  width: var(--t);
-  height: var(--t);
+  width: var(--tw);
+  height: var(--th);
   /* placement is always translate3d (§14.2); state animations keep the base translate */
   transform: translate3d(var(--tx), var(--ty), 0);
   cursor: pointer;
   z-index: var(--z, 100);
+  border-radius: 14% / 10%; /* glow rings read tile-shaped (sprite corners ~7%) */
 }
+/* sprite fills the whole cell: face + extruded edge + rounded corners are baked
+   into the 20×28 PNG (5:7 = --tw/--th) — crisp pixelated upscale */
+.tile img, .mini img, .logo-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+/* hidden tile (§3.5, v0.3.4): entirely blank, solid slate — unmistakably
+   "unknown, turn me over"; no face, edge, chip or clue of any kind */
+.tile .back {
+  position: absolute;
+  inset: 0;
+  background: #4a3f52;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 253, 247, 0.30);
+}
+.tile img, .tile .back { pointer-events: none; }
 /* §17 hit-test generosity: the tap target extends 4 px beyond the visual tile.
    Overlapping neighbors sit higher in z-order, so covered tiles never win a tap. */
 .tile::after { content: ''; position: absolute; inset: -4px; }
-.tile svg, .mini svg {
-  position: absolute;
-  inset: 7%;
-}
-.tile .chip, .mini .chip {
-  position: absolute;
-  left: 16%;
-  right: 16%;
-  bottom: 6.5%;
-  height: 5%;
-  border-radius: 99px; /* family keyline "glaze" (§10.3) */
-}
-/* family keyline colors (§11) */
-.key-d .chip  { background: #4aa3ff; }
-.key-b .chip  { background: #3ec46d; }
-.key-c .chip  { background: #ff4d4d; }
-.key-w .chip  { background: #7a5cff; }
-.key-drR .chip{ background: #ff4d4d; }
-.key-drG .chip{ background: #3ec46d; }
-.key-drW .chip{ background: #8fd7ff; }
 
-/* free tiles lift bright; blocked sit ~12% darker with a flatter shadow (§9.5) */
+/* free tiles lift bright; blocked sit dimmed — the baked sprite edge carries the rest (§9.5) */
 .tile.blocked {
-  filter: brightness(0.88);
-  box-shadow:
-    inset 0 0 0 1.5px rgba(255, 255, 255, 0.9),
-    0 2px 0 var(--tile-bone),
-    0 2px 3px rgba(74, 43, 58, 0.18);
+  filter: brightness(0.85);
 }
 .tile.blocked { cursor: default; }
 .tile.deny { animation: tile-jiggle 220ms ease-out; }
 .tile.popping { animation: tile-pop 260ms ease-out forwards; }
 
-/* bank mini tile */
+/* bank mini tile — portrait sprite in the square slot, height-driven */
 .mini {
   position: absolute;
-  inset: 3px;
+  top: 3px;
+  bottom: 3px;
+  left: 18%;
+  right: 18%;
 }
 
 /* ---------- flights (cosmetic arc to the bank, 350 ms §14.2) ---------- */
@@ -142,13 +130,10 @@
 #fx { position: absolute; inset: 0; pointer-events: none; z-index: 300; contain: strict; }
 .flight {
   position: absolute;
-  width: var(--t);
-  height: var(--t);
   transition: transform 350ms cubic-bezier(0.3, 0.2, 0.55, 1);
   will-change: transform;
 }
-.flight > svg { inset: 0; }
-.flight > svg { animation: fly-arc 350ms ease-in-out; }
+.flight > img { position: absolute; inset: 0; animation: fly-arc 350ms ease-in-out; }
 
 /* ---------- bottom bar (§9.4: three 56px targets — Undo/Shuffle/Hint arrive in M2;
             M1 boots the loop + fresh-deal Restart) ---------- */
@@ -329,15 +314,12 @@
 }
 .home-top { display: flex; flex-direction: column; align-items: center; margin-bottom: 26px; }
 .logo-tiles { display: flex; gap: 8px; margin-bottom: 8px; }
+/* v0.3.4: home logo tiles are the sprite art too — portrait 33×46, soft alpha shadow */
 .logo-tile {
   position: relative;
-  width: 46px; height: 46px;
-  border-radius: 22%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%), var(--tile-face);
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 3px 0 var(--tile-bone), 0 6px 10px rgba(74, 43, 58, 0.3);
+  width: 33px; height: 46px;
+  filter: drop-shadow(0 4px 6px rgba(74, 43, 58, 0.30));
 }
-.logo-tile svg { position: absolute; inset: 7%; }
-.logo-tile .chip { position: absolute; left: 16%; right: 16%; bottom: 6.5%; height: 5%; border-radius: 99px; }
 .wordmark {
   font-size: 46px;
   line-height: 0.95;
@@ -519,14 +501,12 @@
 }
 .ftile {
   position: relative;
-  width: 34px;
-  height: 34px;
-  border-radius: 22%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%), var(--tile-face);
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.9), 0 2px 0 var(--tile-bone), 0 4px 6px rgba(74, 43, 58, 0.25);
+  width: 28px;
+  height: 39px;
+  filter: drop-shadow(0 3px 5px rgba(74, 43, 58, 0.28));
   animation: mini-land 200ms ease-out;
 }
-.ftile svg { position: absolute; inset: 8%; }
+.ftile img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 
 /* ---------- win overlay extras ---------- */
 .best-badge {

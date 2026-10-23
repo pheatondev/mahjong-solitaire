@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>capture-icon</title></head>
+<body style="margin:0;background:#ffffff">
+<!-- §15 icon rasterization harness (locked in-browser pipeline): renders one icon
+     master SVG at the EXACT requested pixel size (?s=), so a viewport-scaled
+     element screenshot of #icon is the finished PNG — no image tools. -->
+<div id="icon" style="width:512px;height:512px"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const f = q.get('f'), s = +q.get('s') || 512;
+  const el = document.getElementById('icon');
+  el.style.width = s + 'px';
+  el.style.height = s + 'px';
+  fetch(f).then(r => r.text()).then(t => {
+    el.innerHTML = t;
+    const svg = el.querySelector('svg');
+    svg.setAttribute('width', s);
+    svg.setAttribute('height', s);
+    document.title = 'ready';
+  });
+</script>
+</body>
+</html>

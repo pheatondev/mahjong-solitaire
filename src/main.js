@@ -13,6 +13,7 @@ import { posKey, isNoProgressState, hintScan } from './core/rules.js';
 import { solverCheck } from './core/solver.js';
 import { thresholds } from './core/score.js';
 import { parseChapter } from './data/levels.js';
+import { faceFile } from './data/assets.js';
 import { STR } from './data/i18n.js';
 import { trapFocus } from './view/widgets.js';
 import {
@@ -47,7 +48,7 @@ let level = null; // current level object
 let chapterInfo = null;
 let state = null;
 let reDealCounter = 0;
-let T = 48;
+let FIT = { w: 34, h: 48 }; // uniform portrait tile dims (design px), set per deal
 let inputLocked = true;
 let currentScreen = 'levels';
 let openPeekId = null; // §3.5: at most one open peek
@@ -353,9 +354,9 @@ function startLevel(lvl, redo, tries = 0) {
 
   const cols = Math.max(...lvl.layers.map((r) => r[0].length));
   const rows = Math.max(...lvl.layers.map((r) => r.length));
-  T = computeFit(els.board, cols, rows);
+  FIT = computeFit(els.board, cols, rows);
   view.render(state.tiles);
-  view.fit(T, cols, rows);
+  view.fit(FIT, cols, rows);
   refreshBoard();
 
   // §14.2/§8.3: brief board shimmer while the §8.2 solver backstop resolves
@@ -453,7 +454,7 @@ function doBank(tile, el) {
   refreshBoard();
 
   audio.flight(); // §12.1 bank-flight slide
-  view.flyToBank(el, tile, T, bank.slotEls[res.slot], () => onLanded(res, tile, comboAtTap));
+  view.flyToBank(el, tile, bank.slotEls[res.slot], () => onLanded(res, tile, comboAtTap));
   checkNoProgress(); // §5.3 strict trigger, at logical tap time
 }
 
@@ -474,10 +475,10 @@ function onLanded(res, _tile, comboAtTap = 1) {
 
   if (state.phase === 'failed') {
     if (!sealRecorded) { sealRecorded = true; recordSeal(); } // §13 stats
-    // the four sealed candies face the player in the fail card (§3.6)
+    // the four sealed candies face the player in the fail card (§3.6) — sprite faces (v0.3.4)
     els.failTiles.innerHTML = state.bank
       .filter(Boolean)
-      .map((b) => `<div class="ftile"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-${b.face}"/></svg></div>`)
+      .map((b) => `<div class="ftile"><img src="${faceFile(b.face)}" alt="" aria-hidden="true" draggable="false"></div>`)
       .join('');
     // the 4th tile visibly lands before the fail overlay plays (§3.6 locked)
     scheduleReveal(() => showOverlay(els.fail), 120, 'failed');
@@ -565,7 +566,7 @@ function doUndo() {
   const cols = Math.max(...level.layers.map((r) => r[0].length));
   const rows = Math.max(...level.layers.map((r) => r.length));
   view.render(state.tiles);
-  view.fit(T, cols, rows);
+  view.fit(FIT, cols, rows);
   refreshBoard();
   els.combo.classList.remove('show');
   checkNoProgress();
@@ -610,7 +611,7 @@ function doShuffle() {
   // banked/popped ids for lookup (tileById), and rendering them would resurrect banked
   // tiles on the board (undo's snapshot-derived state is on-board-only, so it's safe).
   view.render([...state.positions.values()]);
-  view.fit(T, cols, rows);
+  view.fit(FIT, cols, rows);
   refreshBoard();
   els.grid.classList.add('shimmer');
   setTimeout(() => els.grid.classList.remove('shimmer'), 260);

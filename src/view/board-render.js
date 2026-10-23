@@ -5,38 +5,46 @@
 
 import { clamp } from '../util.js';
 import { SCHEMA } from '../data/levels.js';
+import { faceFile } from '../data/assets.js';
 import { faceName } from '../data/i18n.js';
 
-const KEY_CLASS = { d: 'key-d', b: 'key-b', c: 'key-c', w: 'key-w', drR: 'key-drR', drG: 'key-drG', drW: 'key-drW' };
-const keyClass = (face) => KEY_CLASS[face.startsWith('dr') ? face.slice(0, 3) : face[0]];
+/** Per-layer vertical offset (§14.2, v0.3.4): upper layers shift UP by DY so the
+ *  lower tile's baked-in bottom edge peeks out — stacks read at a glance. */
+const DY = 7;
 
-const svgFace = (face) => `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-${face}"/></svg><i class="chip"></i>`;
+const imgFace = (face) => `<img src="${faceFile(face)}" alt="" aria-hidden="true" draggable="false">`;
+const backFace = () => `<i class="back" aria-hidden="true"></i>`;
 
-/** Fit formula (§14.2, v0.3.3): uniform tile size across ALL levels —
- *  T = clamp(min(availW/colsMax, availH/rowsMax), 26, 72). The value depends on
- *  the board area only, never on the level's own cols/rows, so every layout
- *  renders at the identical size (≈47.5 design px at the 390×844 stage). */
+/** Fit formula (§14.2, v0.3.4): portrait tiles — sprite-native 5:7 aspect — at a
+ *  UNIFORM size across all levels. The fit depends only on the board area and
+ *  the global worst case (8 cols × 12 rows × 5-layer stack ⇒ 4 offsets), never
+ *  on the level's own shape: th = min((aw·7/5)/8, (ah − 4·DY)/12). At the
+ *  390×844 stage this is ≈ 34.2 × 47.9 design px. */
 export function computeFit(areaEl, cols, rows) {
   const pad = 5;
   const aw = areaEl.clientWidth - pad * 2;
   const ah = areaEl.clientHeight - pad * 2;
-  return clamp(Math.min(aw / SCHEMA.colsMax, ah / SCHEMA.rowsMax), 26, 72);
+  const LAYERS_MAX = 5; // §6: deepest realism band (band F) stacks 5 layers
+  const th = clamp(Math.min((aw / SCHEMA.colsMax) * 7 / 5, (ah - (LAYERS_MAX - 1) * DY) / SCHEMA.rowsMax), 26, 84);
+  return { w: th * 5 / 7, h: th };
 }
 
 /** Create the DOM board view. */
 export function createBoardView(gridEl, areaEl) {
   const els = new Map(); // tile id → element
   let tiles = [];
+  let TW = 0, TH = 0; // uniform portrait tile dims (design px), set by fit()
 
   function buildTileEl(t) {
     const el = document.createElement('div');
     if (t.hidden) {
-      el.className = 'tile tface facedown';
-      el.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-back"/></svg>`;
-      // no family chip on a face-down tile: the keyline glaze would leak the face (§3.5)
+      // hidden tile (§3.5, v0.3.4): an entirely blank, solid slate tile — clearly
+      // "unknown, turn me over", with no face/clue of any kind baked in
+      el.className = 'tile facedown';
+      el.innerHTML = backFace();
     } else {
-      el.className = `tile tface ${keyClass(t.face)}`;
-      el.innerHTML = svgFace(t.face);
+      el.className = 'tile';
+      el.innerHTML = imgFace(t.face);
     }
     el.dataset.id = t.id;
     els.set(t.id, el);
@@ -57,19 +65,26 @@ export function createBoardView(gridEl, areaEl) {
     },
 
     /** Layout pass: grid box + per-tile transform vars. Reads only client sizes
-        (batched once per fit — §16 no layout thrash). */
-    fit(T, cols, rows) {
+        (batched once per fit — §16 no layout thrash). `fit` = {w, h} design px.
+        Upper layers sit DY px higher — the strip below each upper tile reveals
+        the covered tile's baked-in bottom edge (§14.2 v0.3.4). */
+    fit(fit, cols, rows) {
       const aw = areaEl.clientWidth, ah = areaEl.clientHeight;
-      gridEl.style.setProperty('--t', T + 'px');
-      gridEl.style.width = cols * T + 'px';
-      gridEl.style.height = rows * T + 'px';
-      gridEl.style.left = ((aw - cols * T) / 2 | 0) + 'px';
-      gridEl.style.top = ((ah - rows * T) / 2 | 0) + 'px';
+      ({ w: TW, h: TH } = fit);
+      let maxLayer = 0;
+      for (const t of tiles) if (t.layer > maxLayer) maxLayer = t.layer;
+      const stackSpread = maxLayer * DY; // tallest stack rises above row 0
+      gridEl.style.setProperty('--tw', TW + 'px');
+      gridEl.style.setProperty('--th', TH + 'px');
+      gridEl.style.width = cols * TW + 'px';
+      gridEl.style.height = rows * TH + stackSpread + 'px';
+      gridEl.style.left = ((aw - cols * TW) / 2 | 0) + 'px';
+      gridEl.style.top = ((ah - rows * TH - stackSpread) / 2 | 0) + 'px';
       for (const t of tiles) {
         const el = els.get(t.id);
         if (!el) continue;
-        el.style.setProperty('--tx', t.col * T + 'px');
-        el.style.setProperty('--ty', t.row * T + 'px');
+        el.style.setProperty('--tx', t.col * TW + 'px');
+        el.style.setProperty('--ty', t.row * TH - t.layer * DY + 'px');
         el.style.setProperty('--z', 100 + t.layer * 10);
       }
     },
@@ -109,7 +124,7 @@ export function createBoardView(gridEl, areaEl) {
       el.classList.add('peeked');
       el.classList.add('flip');
       setTimeout(() => el.classList.remove('flip'), 240);
-      el.innerHTML = svgFace(t.face);
+      el.innerHTML = imgFace(t.face);
       el.setAttribute('aria-label', `${faceName(t.face)} tile, peeked`);
     },
 
@@ -123,7 +138,7 @@ export function createBoardView(gridEl, areaEl) {
       el.classList.add('flip');
       setTimeout(() => el.classList.remove('flip'), 240);
       // t.face must exist — hidden tiles carry their real dealt face in state
-      el.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><use href="#tile-back"/></svg>`;
+      el.innerHTML = backFace();
       el.setAttribute('aria-label', 'facedown tile'); // next refreshFree adds free/blocked
       return true;
     },
@@ -153,30 +168,31 @@ export function createBoardView(gridEl, areaEl) {
 
     /** Purely cosmetic: bank-flight of `el` from its board spot to slot `slot`.
         The board cell is already freed logically (§14.2). Reuses the tile node.
-        Coords are stage-design-space (#fx is a child of #stage). */
-    flyToBank(el, t, T, slotEl, onLanded) {
+        Coords are stage-design-space (#fx is a child of #stage). Uses the
+        portrait dims and layer offset recorded by the last fit(). */
+    flyToBank(el, t, slotEl, onLanded) {
       const fx = document.getElementById('fx');
-      const sx = areaEl.offsetLeft + gridEl.offsetLeft + t.col * T;
-      const sy = areaEl.offsetTop + gridEl.offsetTop + t.row * T;
-      const dx = slotEl.offsetLeft + (slotEl.offsetWidth - T) / 2 - sx;
-      const dy = slotEl.offsetTop + (slotEl.offsetHeight - T) / 2 - sy;
+      const sx = areaEl.offsetLeft + gridEl.offsetLeft + t.col * TW;
+      const sy = areaEl.offsetTop + gridEl.offsetTop + t.row * TH - t.layer * DY;
+      const dx = slotEl.offsetLeft + (slotEl.offsetWidth - TW) / 2 - sx;
+      const dyv = slotEl.offsetTop + (slotEl.offsetHeight - TH) / 2 - sy;
       // reparent into the fx layer (stage-space coords)
       fx.appendChild(el);
       el.classList.remove('blocked', 'deny');
       el.style.left = sx + 'px';
       el.style.top = sy + 'px';
-      // --t lives on #grid and is not inherited into #fx — size the flight explicitly
-      el.style.width = T + 'px';
-      el.style.height = T + 'px';
+      // --tw/--th live on #grid and are not inherited into #fx — size the flight explicitly
+      el.style.width = TW + 'px';
+      el.style.height = TH + 'px';
       el.style.transform = 'translate3d(0,0,0)';
       // arrive at exactly the mini's reveal scale, so the land swap is seamless (§9.5)
-      const miniBox = Math.max(20, (slotEl.clientWidth - 6)); // slot border (2.5×2) + .mini inset (3×2)
-      const s0 = (miniBox * 0.86) / T; // mini-land 0% keyframe scale
+      const miniBox = Math.max(20, slotEl.clientHeight - 6); // slot border (2.5×2) + .mini inset (3×2), height-driven
+      const s0 = (miniBox * 0.86) / TH; // mini-land 0% keyframe scale
       el.style.transformOrigin = 'center';
       el.classList.add('flight');
       void el.offsetWidth; // commit the start pose — inserted elements need one reflow
       requestAnimationFrame(() => {
-        el.style.transform = `translate3d(${dx}px,${dy}px,0) scale(${s0})`;
+        el.style.transform = `translate3d(${dx}px,${dyv}px,0) scale(${s0})`;
       });
       // Landing resolution: transitionend when possible, timer otherwise —
       // prefers-reduced-motion flattens the transition, so the event may never fire.
@@ -211,8 +227,8 @@ export function createBankView(bankEl) {
   const slots = [...bankEl.querySelectorAll('.slot')]; // only real slots — stray children must never shift slot indices
   const mini = (face) => {
     const m = document.createElement('div');
-    m.className = `mini tface ${keyClass(face)}`;
-    m.innerHTML = svgFace(face);
+    m.className = `mini`;
+    m.innerHTML = imgFace(face);
     m.classList.add('pending'); // invisible until its flight lands
     return m;
   };

@@ -6,7 +6,7 @@
 | **Genre** | Casual puzzle — mahjong solitaire (tile-matching) |
 | **Platform** | Web (mobile-first), static files on GitHub Pages |
 | **Reference game** | *Mahjong Blast* by Nebula Studio (iOS/Android) |
-| **Doc version** | v0.3.3 — user feedback: uniform tile size across all levels. §7.1 cols cap narrowed to exactly 8 and §14.2 fit made level-independent; all 60 layouts re-authored by `scripts/build-levels.mjs` (tile counts, names, hidden curve, §6 bands preserved). UI copy per user (supersedes the §22 ship-time placeholder rename for this surface): Home wordmark = **Mahjong Smoosh**; tagline and Settings about lines removed. Supersedes v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets) |
+| **Doc version** | v0.3.4 — user feedback: user-sourced **pixel-art tile sprites** replace the procedural SVG faces (`assets/tiles/*.png`, §10.3); **tiles redesigned to portrait 5:7** (§14.2 fit formula + board geometry, supersedes the v0.3.3 square fit); **per-layer vertical offset** stacks read as stacks (§14.2, amends the v1 "no per-layer offsets" ruling); **hidden tiles = flat solid slate** (§3.5); family keyline chips retired (§10.3); PWA icons + favicon re-skinned from the sprite art (§15, locked in-browser rasterization). Supersedes v0.3.3 (uniform tile size across levels — the invariant survives, but the size is now the portrait `--tw/--th` pair), which superseded v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets). UI copy per user (v0.3.3, supersedes the §22 ship-time placeholder rename for this surface): Home wordmark = **Mahjong Smoosh**; tagline and Settings about lines removed |
 | **Date** | 2026-10-23 |
 | **Status** | Implementation-ready — this document is the build contract |
 | **Doc format** | Markdown (`.md`) — human-readable, LLM-readable, renders natively on GitHub |
@@ -95,7 +95,7 @@
 | Decision | Value |
 |---|---|
 | Languages | HTML5, CSS3, vanilla JavaScript (**ES2020** ES modules) |
-| Rendering | **DOM-based** tiles (CSS transforms + SVG faces) — no canvas engine |
+| Rendering | **DOM-based** tiles (CSS transforms + sprite `<img>` faces, v0.3.4) — no canvas engine |
 | Libraries | **None** (no CDN dependencies; everything offline-cacheable and first-party) |
 | Audio | **Web Audio API**, fully synthesized (no audio files) |
 | Fonts | System font stack (no webfont downloads) |
@@ -172,7 +172,7 @@ A full level is 1–6 minutes. Sessions are interruption-safe: progress within a
 
 ### 3.5 Flipped tiles (face-down)
 
-From level 13 on, some tiles are dealt **face-down** — a generic candy back, face unknown. A face-down tile occupies and blocks exactly like a normal tile; its face can never be banked directly. Neutral vocabulary: *flipped tile / flip / peek / bank*.
+From level 13 on, some tiles are dealt **face-down** — (**amended v0.3.4, user feedback:** the old patterned candy back is retired entirely; the back is now an **entirely blank, solid deep-slate tile** `#4a3f52` with a thin light outline — unmistakably "unknown, turn me over", no pattern, no chip, no silhouette clue), face unknown. A face-down tile occupies and blocks exactly like a normal tile; its face can never be banked directly. Neutral vocabulary: *flipped tile / flip / peek / bank*.
 
 | State | Meaning |
 |---|---|
@@ -366,7 +366,7 @@ Levels are plain **JSON** (fetched at boot; cacheable by the service worker). On
 
 Rules for a valid layout (validated at runtime, console-warn + skip level in dev):
 
-- Every layer's rows are equal length (rectangle `cols × rows`), `cols = 8` (**amended v0.3.3 — uniform tile size**: the §14.2 fit is now level-independent, so every board spans the full usable width `8 × 47.5 = 380 design px`; wide old layouts were re-authored as narrower silhouettes with deeper layered plate stacks — tile counts, names, hidden curve and §6 bands unchanged), `6 ≤ rows ≤ 12`.
+- Every layer's rows are equal length (rectangle `cols × rows`), `cols = 8` (**amended v0.3.3 — uniform tile size**; **v0.3.4: portrait 5:7 tiles pair with the §14.2 fit, so the board no longer spans the full 8 × 47.5 = 380 px — it spans `8 × tw ≈ 284 px`, centered with wider side air; §7.1 stays `cols = 8` exactly**), `6 ≤ rows ≤ 12`.
 - A tile on layer `L > 0` must sit on top of a tile footprint at the same `(col,row)` on layer `L-1` (no floating tiles — keeps rendering and blocking logic trivial).
 - Total tiles is **even** (pairs).
 - `hidden` must satisfy `0 ≤ hidden ≤ floor(tiles / 4)` (≤ 25% fog share) and — for teaching pacing — `hidden = 0` for levels 1–12.
@@ -519,14 +519,14 @@ Boot → Home ─┬→ Level Select ─→ Game ─┬→ Win overlay ─→ ne
 - **Win overlay:** dark-candy scrim → three star slots fill with pop+ping (staggered 250 ms), score count-up, buttons: `Next Level` (primary), `Replay`, `Map`. New-best badge if star count or score improved.
 - **Fail overlay (§3.6):** *"The tin overflowed! 🍬"* → `Restart` (fresh deal, free & unlimited) / `Map`. No lives, ever.
 - **First-run tooltip (one-time, level 1):** *"Tap a free tile to bank it — two matching tiles in the bank pop! 🍬"* — dismisses on the first bank tap; doubles as the audio-unlock gesture; never shown again (cleared by Reset progress).
-- **Home:** logo lockup (CSS-only candy wordmark), `Play` (→ the **frontier level**, id = `unlocked`; a mid-level quit abandons the attempt — §3.4 — so "continue" always means the frontier), `Levels`, `Stats`, `Settings`; quiet SFX jingle (a session's first Home is silent until the first tap — iOS audio policy, §12); version + "made with 🍬" footer.
+- **Home:** logo lockup (CSS-only candy wordmark above **sprite-art mini tiles** — 33×46 portrait sprites, v0.3.4), `Play` (→ the **frontier level**, id = `unlocked`; a mid-level quit abandons the attempt — §3.4 — so "continue" always means the frontier), `Levels`, `Stats`, `Settings`; quiet SFX jingle (a session's first Home is silent until the first tap — iOS audio policy, §12); "made for Emmy" footer.
 - **Level select:** scrollable grid (4 cols), chapter headers; buttons min 72 px; star pips on each.
 - **Stats screen:** pairs cleared (lifetime) · matches played · best combo · levels completed · **tin overflows** · total stars X/180; simple stat cards (no charts in v1).
 - **Settings:** SFX toggle · Music toggle (visible, **inert** — music ships post-launch) · Highlight free tiles (on/off) · Reduce motion (on/off) · Reset progress (destructive, double-confirm) · About/credits/privacy one-liner. No Theme chips in v1 (single theme, §10.4).
 
 ### 9.4.1 Approved screen mockups (v1 — reference art)
 
-The full art-board set lives in **`design/`**: ten vector mockups on the locked 390×844 stage in **`design/screens/*.svg`** (plus an SVG contact sheet, `all.svg`), generated by **`design/tools/gen-screen-mockups.py`**; all 34 tile-face families + the tile back are drawn in **`design/tile-face-specimen.svg`** via `design/tools/gen-tile-specimen.py` (§11). Raster view-only captures live in `design/screens/png/`:
+The full art-board set lives in **`design/`**: ten vector mockups on the locked 390×844 stage in **`design/screens/*.svg`** (plus an SVG contact sheet, `all.svg`), generated by **`design/tools/gen-screen-mockups.py`**; `design/tile-face-specimen.svg` (via `design/tools/gen-tile-specimen.py`) documents the **retired** procedural face art (§11 — superseded by the sprite atlas in v0.3.4). Icon masters: `design/icons-master[-maskable].svg` rasterized via `design/tools/capture-icon.html` (§15). Raster view-only captures live in `design/screens/png/`:
 
 ![Mahjong Lite screen mockups — contact sheet](design/screens/png/all.png)
 
@@ -563,12 +563,15 @@ Chapter accents assigned per §6. Every token lives in `css/themes.css` — see 
 
 ### 10.3 Tile design system
 
-- **Shape:** 22% corner radius, 2 px inner white rim ("icing"), bottom-right extruded edge (3D-lite via layered box-shadows — no textures).
-- **Glaze hint:** each family gets a thin colored keyline under the face (see §11) — color never carries meaning alone (shape does), which keeps it colorblind-safe.
-- **State styles:** idle (free) / covered (dimmed 12%+flat shadow) / peeked (flip-in + fizz ring) / hint-pulsed / flying-to-bank (arc) / popping (scale up 1.25 + fade, used on board-jiggle deny and bank pops).
-- **Face-down back (flipped tiles, §3.5):** same silhouette & shadow stack for depth-reading consistency; face shows a candy-wrapper pattern — soft arc stripes tinted by the chapter accent + one small "peek" sparkle mark in a corner. The back must contrast *strongly* with all faces (fog readability at small tile sizes is a known risk, §21). One generic back asset (SVG symbol `tile-back`), no per-family backs.
-- **Bank ("the tin", §3.3):** rounded tray strip in the top HUD zone; empty slots = dashed soft-cookie circles; occupied = the tile at mini scale (78%). Board→bank flight is a 350 ms arc (ease-out) with landing squash; an open peek wears a thin fizz ring (a pure marker — no countdown); a sealed bank plays a gentle tin-tip wobble on the fail overlay.
+**(Amended v0.3.4, user feedback — sprite-art takeover):** the procedural CSS/SVG tile composite (icing rim, extruded box-shadow edge, family keyline chip) is **retired**. Each dealt face is now a **user-sourced pixel-art sprite** (`assets/tiles/*.png`, 20×28 px RGBA, 5:7) that carries the ivored face, rounded corners and the extruded edge **baked in**; rendering is `image-rendering: pixelated` for a crisp pixel-art scale-up. The a-11y labels (§17) are unchanged — art no longer color-codes families via chips, the sprites' own face art reads (shape-coded suits survive: dots vs sticks vs glyphs).
+
+- **Shape:** portrait 5:7 sprite, full-bleed in the tile cell (`--tw × --th`, §14.2); the PNG's baked edge + transparent corners define the silhouette — no CSS rim/shadow stacks on face tiles.
+- **Glaze hint:** **retired** (chips deleted from board, minis, logo tiles and fail-card sealed tiles).
+- **State styles:** idle (free) / covered (dimmed 15%, flat — the §9.5 brightness filter only) / peeked (flip-in + fizz ring) / hint-pulsed / flying-to-bank (arc) / popping (scale up 1.25 + fade, used on board-jiggle deny and bank pops).
+- **Face-down back (flipped tiles, §3.5, amended v0.3.4):** a flat, solid **deep-slate `#4a3f52`** rounded-portrait rect (CSS `border-radius` matching the sprite silhouette) with a thin light outline `rgba(255,253,247,.30)`. Creates CSS-only element `.back` — zero patterns, zero leaks; must contrast *strongly* with all face sprites.
+- **Bank ("the tin", §3.3):** rounded tray strip in the top HUD zone; empty slots = dashed soft-cookie circles; occupied = the portrait sprite mini at 78% height (§9.5). Board→bank flight is a 350 ms arc (ease-out) with landing squash; an open peek wears a thin fizz ring (a pure marker — no countdown); a sealed bank plays a gentle tin-tip wobble on the fail overlay; the fail card's four sealed tiles are sprite `<img>`s (portrait 28×39).
 - **Flip animation:** 220 ms flip-in (rotateY 90°→0° with a mid-flip face-swap, or scaleY squash on weak devices), 160 ms flip-back; hint ghost-flip reuses flip-in + pulse, then flip-back.
+- **Sprite pipeline:** `src/data/assets.js` maps dealt face ids → sprite file (`d1–9×Circles1–9, b→Bamboo, c→Characters, wE/S/W/N→East/South/West/North, drR/G/W→Red/Green/White`); the 34 PNGs precache in `sw.js` (§15).
 
 ### 10.4 Themes (1 ships in v1; 2 parked)
 
@@ -589,23 +592,22 @@ Themes re-skin: background art, tile keylines, confetti color pools. Identical g
 
 ## 11. Tile face specification
 
-34 standard suit families × 4 copies = **136 tiles — the entire v1 bag** (locked, §8.1); decorative families stay *defined* below but are **not dealt** in v1 (§3.2). Faces are built from **inline SVG symbols** (suits, honors) and **emoji glyphs** (flowers/seasons, unused in v1) — zero raster assets.
+34 standard suit families × 4 copies = **136 tiles — the entire v1 bag** (locked, §8.1); decorative families stay *defined* below but are **not dealt** in v1 (§3.2). **(Amended v0.3.4, user feedback):** faces are now **user-sourced pixel-art sprite PNGs** under `assets/tiles/` — one 20×28 file per face, rendered `<img>` with `image-rendering: pixelated`; the inline `<symbol>` sprite sheet in `index.html` is deleted. Flowers/seasons stay undone in v1 and have no sprites — farming them later is a §11 art decision, not a code one.
 
-| Family | Copies | Face art | Keyline (glaze) |
+| Family | Copies | Face art (sprite file) | Sprite |
 |---|---|---|---|
-| Dots 1–9 | 4 each | SVG: rank-count candy dots (blue glaze dots, rank-4 "clover" arrangement per standard style) | blue `#4aa3ff` |
-| Bamboo 1–9 | 4 each | SVG: rank-count rounded bamboo sticks; rank-1 = tiny bird (emoji 🐦 on face) | green `#3ec46d` |
-| Characters 1–9 | 4 each | SVG text: Chinese numerals 一–九 over 萬 (red glyph style, classic look) | red `#ff4d4d` |
-| Wind E/S/W/N | 4 each | SVG letter tile: `N E S W` big letter + compass needle icon, one glaze per wind | indigo `#7a5cff` |
-| Dragon White | 4 | SVG: empty blue-lined frame (classic blank) | sky `#8fd7ff` |
-| Dragon Red | 4 | SVG: 中 character in red cross-frame | red |
-| Dragon Green | 4 | SVG: 發 character in green frame | green |
-| Flowers (decor) 🌸 🌺 🌷 🌻 | even (2 or 4) — **not dealt in v1** | emoji glyph centered | pink |
-| Seasons (decor) 🌱 ☀️ 🍂 ❄️ | even (2 or 4) — **not dealt in v1** | emoji glyph centered | amber |
+| Dots 1–9 | 4 each | rank-count candy dots, pixel-art | `Circles1–9.png` |
+| Bamboo 1–9 | 4 each | rank-count bamboo sticks, pixel-art | `Bamboo1–9.png` |
+| Characters 1–9 | 4 each | Chinese numerals 一–九 over 萬, pixel-art | `Characters1–9.png` |
+| Wind E/S/W/N | 4 each | letter/character tile, pixel-art | `East / South / West / North.png` |
+| Dragon White | 4 | blank frame, pixel-art | `White.png` |
+| Dragon Red | 4 | 中, pixel-art | `Red.png` |
+| Dragon Green | 4 | 發, pixel-art | `Green.png` |
+| Flowers (decor) 🌸 🌺 🌷 🌻 | even (2 or 4) — **not dealt in v1** | *no sprite (backlog art decision)* | — |
+| Seasons (decor) 🌱 ☀️ 🍂 ❄️ | even (2 or 4) — **not dealt in v1** | *no sprite (backlog art decision)* | — |
 
-- **Emoji rendering variance** is a known risk (§21): test matrix covers iOS/Android/desktop; any problem glyph gets an SVG fallback (each decorative face has a defined alternate in JSON config `faceFallback` map).
-- **v1 ruling (locked):** deal bags use the *pure standard 136-tile deck only* — decorative flowers/seasons put no face on any board in v1 (§8.1). Their symbols ship in the sprite for backlog variants, so emoji rendering only matters to future versions.
-- Faces live in one `<svg><defs><symbol id="tile-d5">…` sprite embedded in `index.html` — no extra requests, cache-buster-free. Rendered reference sheet of every family + the tile back: `design/tile-face-specimen.svg`.
+- **v1 ruling (locked):** deal bags use the *pure standard 136-tile deck only* — decorative flowers/seasons put no face on any board in v1 (§8.1).
+- Face→file mapping lives in `src/data/assets.js` (one map, one function). The old reference sheet `design/tile-face-specimen.svg` documents the retired procedural art (kept as design history, superseded by the sprite atlas).
 
 ---
 
@@ -722,9 +724,9 @@ mahjong-lite/
 
 ### 14.2 Rendering approach (DOM tiles)
 
-- Each tile = one `div.tile` with `transform: translate3d(x, y, 0)`, `z-index = 100 + layer×10` (ties within a layer are harmless — full-overlap alignment means no intra-layer overlap); side/cover relationships are pure arithmetic.
-- **Fit calculation (amended v0.3.3 — uniform tile size, user feedback "tiles shrink as levels progress"):** `T = clamp(min(availW / 8, availH / 12), 26, 72)` — the fit depends only on the board area, never on the level's own cols/rows, so **every level renders at the identical tile size** (≈47.5 design px at the 390×844 stage with 5 px side padding). This is what the §7.1 cols cap of exactly 8 guarantees: 8 × 47.5 = 380 px of usable width; 12 rows × 47.5 = 570 px of board height (§9.1 safe-area frame subtracts insets before this math). Previously (≤ v0.3.2) `T` ranged from ~26 px on 14-col boards up to ~47 px on pebbles. The §17 hit-target generosity on top of `T` remains the main tap-affordance.
-- Visual overlap transparency: layer-1+ tiles draw a 1.5 px darker seam + stronger drop shadow so stacking reads clearly at small tile sizes.
+- Each tile = one `div.tile` with `transform: translate3d(x, y, 0)`, `z-index = 100 + layer×10`; side/cover relationships are pure arithmetic.
+- **Per-layer vertical offset (amended v0.3.4, user feedback "add a slight vertical offset between layers"):** every layer sits `DY = 7` design px higher than the one below — `--ty = row × th − layer × DY` (vertical ONLY; no horizontal offset — the uniform 8-col fit leaves zero horizontal slack). The covered tile's baked sprite edge peeks out beneath each upper tile, so stacks read as stacks at a glance. This explicitly supersedes the v1 "no per-layer offsets" ruling. Uniformity is preserved: `DY` is a constant, not a fraction of tile size.
+- **Fit calculation (amended v0.3.4 — portrait tiles):** the fit returns the **pair `{w, h}`** (`--tw × --th`): `th = clamp(min((availW/8)×7/5, (availH − 4·DY)/12), 26, 84)`, `tw = th × 5/7` — height-bound at the 390×844 stage (**≈35.5 × 49.7 design px**, sprite-native 5:7). The fit still depends only on the board area and the global worst case — 8 cols × 12 rows × 5-layer stack (4 offsets) — never on the level's own cols/rows, so **every level renders at the identical tile size** (the v0.3.3 uniform-size ruling survives). Board bbox: width `cols × tw`, height `rows × th + maxLayer × DY`, top offset centers it. Previously (v0.3.3) tiles were square ⌀47.5 px; the §17 hit-target generosity wins tap affordances on top of the portrait rect.
 - **Match pops happen in the bank** (the twin pair's two slots): animate the two slot tiles (scale+fade+confetti), then clear. Board-side, a tapped tile's cell is freed **logically at tap time** — free-checks see it gone instantly; the flight to the bank is cosmetic and non-blocking. Targeted re-z updates only — never re-render all 136 nodes for one move.
 
 ### 14.3 State machine (coarse)
@@ -752,7 +754,7 @@ Screens render into `#app` via a tiny screen manager (show/hide, no router lib);
   - **Bare-path rule:** navigation requests for the deployed subpath (e.g. `https://user.github.io/mahjong-lite/`) must be served the cached `index.html` — the SW maps bare directory-path navigations to the cached shell, or the second *offline* visit 404s.
 - **iOS specifics:** `apple-touch-icon`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style: black-translucent`; note that iOS Safari infers install via Share → Add to Home Screen (no programmatic prompt); SW size budget matters (iOS caches aggressively-evicts aggressively: keep total precache < 2 MB).
 - **Payload budget:** initial load ≤ **200 KB** gzipped total (code+css+json, no fonts, no audio assets, SVG inline) — comfortably met by the no-asset approach.
-- **Icon pipeline (locked):** the master icon is an inline SVG (a candy tile + wordmark lockup); the agent rasterizes the exact PNG sizes (192, 512, maskable variants, `apple-touch-icon`) using the built-in browser screenshot — no external image tools. `favicon.svg` ships alongside.
+- **Icon pipeline (locked, amended v0.3.4):** the master icons are SVG lockups (`design/icons-master.svg`, `design/icons-master-maskable.svg`) composited over the **sprite art** (`assets/tiles/Red.png`, the 中 dragon face) on the bubblegum canvas; the agent rasterizes the exact PNG sizes (192, 512, maskable variants, `apple-touch-icon` 180) in-browser via `design/tools/capture-icon.html` + canvas — no external image tools. `favicon.svg` inlines the sprite itself as a data URI (no wordmark — unreadable at 16 px).
 
 ---
 
@@ -772,7 +774,7 @@ Screens render into `#app` via a tiny screen manager (show/hide, no router lib);
 - Suits are **shape-coded** (dots vs. sticks vs. glyphs), not color-coded — colorblind-safe by construction.
 - Big targets (§9.5), high-contrast text (`--ink` on ivory ≥ 7:1), no timed pressure (the combo window has no visible countdown, §4.1), no audio-only cues (visual combo badge mirrors every SFX).
 - `prefers-reduced-motion` respected + in-game Reduce Motion toggle (particles become a single sparkle, screens fade-cut).
-- Hit-testing generosity: tile tap target extends 4 px beyond visual; bottom-bar buttons ≥ 56 px.
+- Hit-testing generosity: tile tap target extends 4 px beyond the visual (portrait 5:7 rect, §14.2); bottom-bar buttons ≥ 56 px.
 - Screen-reader baseline (best-effort in v1): HUD/buttons are real `<button>`s with labels; dialogs `role="dialog"` + focus trap; tiles get `aria-label` ("Blue dot tile, free"). Full screen-reader board navigation is a backlog item.
 - Big-tile / zoom-assist mode: **backlog** (§19) — noted as the Mahjong Blast audience feature worth adding after launch.
 
@@ -829,7 +831,7 @@ Parked by the v1 decision round (in rough priority order):
 | Face-down backs read confusingly on dense stacked boards | Medium | Strong face/back contrast, mid-flip face-swap animation, levels 13–24 start with only 1–2 flipped tiles; playtest check in M4 |
 | Bank seal fail feels harsh for the senior-friendly audience | Medium | Free unlimited instant restart, gentle copy, pre-seal warning tint at 3 faces, undo-first affordance in the no-progress dialog; playtest knob to trial the mercy-undo variant (§3.6) |
 | Landscape-phone stages are small (height-bound scale ~0.4×, tiles ≈13–16 physical px) | Low (niche case) | Dismissible once-per-session portrait hint; landscape-mobile never blocks play; desktop/tablet/laptop are the sanctioned big-screen surfaces; playtest check in M4 that the hint copy reads as advice, not nagging |
-| Layered boards read poorly at small tile sizes | Medium | Seam+shadow depth tokens, uniform tile size ≈47.5 px (v0.3.3, §14.2) — larger than the pre-reshape worst case and identical on every level |
+| Layered boards read poorly at small tile sizes | Medium | Per-layer vertical offset DY = 7 px (v0.3.4, §14.2) + baked sprite edges + uniform portrait size 35.5×49.7 px — larger than the pre-reshape worst case and identical on every level |
 | Solver timeouts on dense boards | Low | Node budget + greedy heuristics; boards ≤ 136; generation-window retry |
 | iOS audio unlock/autoplay quirks | Low | Unlock on first gesture; recipes pure WebAudio; test on real device |
 | GitHub Pages subpath breakage (absolute paths) | Medium | Relative paths only; smoke-test deployed URL pre-release |
