@@ -88,79 +88,84 @@
 
     <div id="fx" aria-hidden="true"></div>
 
-    <div id="ovl-win" class="overlay" role="dialog" aria-modal="true" aria-labelledby="win-title">
-      <div class="panel">
-        <h2 id="win-title"></h2>
-        <div id="win-stars">
-          <span class="st">★</span><span class="st">★</span><span class="st">★</span>
-        </div>
-        <div id="win-score">0</div>
-        <div id="win-best" class="best-badge" hidden></div>
-        <div class="bigbtns">
-          <button id="btn-next" class="btn wide primary"></button>
-          <button id="btn-replay" class="btn wide"></button>
-          <button id="btn-map2" class="btn wide"></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- §5.3 no-progress dialog: fires on the strict pre-seal state only; modal, no
-         scrim-dismiss (locked). Buttons mirror the §5 ladder — nothing auto-plays. -->
-    <div id="dlg-nopro" class="overlay" role="dialog" aria-modal="true" aria-labelledby="nopro-title">
-      <div class="panel">
-        <h2 id="nopro-title"></h2>
-        <p id="nopro-body"></p>
-        <div class="bigbtns colbtns">
-          <button id="btn-dlg-shuffle" class="btn wide primary"></button>
-          <button id="btn-dlg-undo" class="btn wide"></button>
-          <button id="btn-dlg-restart" class="btn wide"></button>
-          <button id="btn-dlg-map" class="btn wide"></button>
-        </div>
-      </div>
-    </div>
-
-    <div id="ovl-fail" class="overlay" role="dialog" aria-modal="true" aria-labelledby="fail-title">
-      <div class="panel">
-        <h2 id="fail-title"></h2>
-        <p id="fail-body"></p>
-        <!-- the four sealed candies, at 78% mini scale (§3.6) -->
-        <div id="fail-tiles" aria-hidden="true"></div>
-        <div class="bigbtns colbtns">
-          <button id="btn-fail-restart" class="btn wide primary"></button>
-          <button id="btn-fail-map" class="btn wide"></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- §9.4 pause panel: player-initiated only (the tab-hide clock freeze is §16 and
-         opens nothing). Restart/Settings/Map route out; Resume returns to play. -->
-    <div id="dlg-pause" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
-      <div class="panel">
-        <h2 id="pause-title"></h2>
-        <p id="pause-sub"></p>
-        <div class="bigbtns colbtns">
-          <button id="btn-p-resume" class="btn wide primary"></button>
-          <button id="btn-p-restart" class="btn wide"></button>
-          <button id="btn-p-settings" class="btn wide"></button>
-          <button id="btn-p-map" class="btn wide"></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- §13 destructive reset, second stage of the double-confirm. -->
-    <div id="dlg-reset" class="overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
-      <div class="panel">
-        <h2 id="reset-title"></h2>
-        <p id="reset-body"></p>
-        <div class="bigbtns colbtns">
-          <button id="btn-reset-yes" class="btn wide danger"></button>
-          <button id="btn-reset-cancel" class="btn wide"></button>
-        </div>
-      </div>
-    </div>
 
     <!-- §13 storage-failure toast (one-time, non-blocking) -->
     <div id="toast" role="status" aria-live="polite"></div>
+    </div><!-- /stage -->
+  </div><!-- /safe -->
+
+  <!-- Modal scrims live OUTSIDE #stage: the stage's scale transform makes it the
+       containing block for any descendant, so only a body-level position:fixed
+       overlay can cover the entire window (letterbox bands and odd-viewport
+       phones included). Panels self-scale with var(--scale) to match the stage. -->
+  <div id="ovl-win" class="overlay" role="dialog" aria-modal="true" aria-labelledby="win-title">
+    <div class="panel">
+      <h2 id="win-title"></h2>
+      <div id="win-stars">
+        <span class="st">★</span><span class="st">★</span><span class="st">★</span>
+      </div>
+      <div id="win-score">0</div>
+      <div id="win-best" class="best-badge" hidden></div>
+      <div class="bigbtns">
+        <button id="btn-next" class="btn wide primary"></button>
+        <button id="btn-replay" class="btn wide"></button>
+        <button id="btn-map2" class="btn wide"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- §5.3 no-progress dialog: fires on the strict pre-seal state only; modal, no
+       scrim-dismiss (locked). Buttons mirror the §5 ladder — nothing auto-plays. -->
+  <div id="dlg-nopro" class="overlay" role="dialog" aria-modal="true" aria-labelledby="nopro-title">
+    <div class="panel">
+      <h2 id="nopro-title"></h2>
+      <p id="nopro-body"></p>
+      <div class="bigbtns colbtns">
+        <button id="btn-dlg-shuffle" class="btn wide primary"></button>
+        <button id="btn-dlg-undo" class="btn wide"></button>
+        <button id="btn-dlg-restart" class="btn wide"></button>
+        <button id="btn-dlg-map" class="btn wide"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ovl-fail" class="overlay" role="dialog" aria-modal="true" aria-labelledby="fail-title">
+    <div class="panel">
+      <h2 id="fail-title"></h2>
+      <p id="fail-body"></p>
+      <!-- the four sealed candies, at 78% mini scale (§3.6) -->
+      <div id="fail-tiles" aria-hidden="true"></div>
+      <div class="bigbtns colbtns">
+        <button id="btn-fail-restart" class="btn wide primary"></button>
+        <button id="btn-fail-map" class="btn wide"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- §9.4 pause panel: player-initiated only (the tab-hide clock freeze is §16 and
+       opens nothing). Restart/Settings/Map route out; Resume returns to play. -->
+  <div id="dlg-pause" class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div class="panel">
+      <h2 id="pause-title"></h2>
+      <p id="pause-sub"></p>
+      <div class="bigbtns colbtns">
+        <button id="btn-p-resume" class="btn wide primary"></button>
+        <button id="btn-p-restart" class="btn wide"></button>
+        <button id="btn-p-settings" class="btn wide"></button>
+        <button id="btn-p-map" class="btn wide"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- §13 destructive reset, second stage of the double-confirm. -->
+  <div id="dlg-reset" class="overlay" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+    <div class="panel">
+      <h2 id="reset-title"></h2>
+      <p id="reset-body"></p>
+      <div class="bigbtns colbtns">
+        <button id="btn-reset-yes" class="btn wide danger"></button>
+        <button id="btn-reset-cancel" class="btn wide"></button>
+      </div>
     </div>
   </div>
 

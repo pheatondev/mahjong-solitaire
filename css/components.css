@@ -178,7 +178,7 @@
 
 /* ---------- overlays (win §4.2/§9.4, fail §3.6) — modal scrims, role=dialog ---------- */
 .overlay {
-  position: absolute;
+  position: fixed; /* body-level: covers the entire window, not just the stage */
   inset: 0;
   display: none;
   align-items: center;
@@ -189,6 +189,7 @@
 .overlay.open { display: flex; animation: overlay-in 200ms ease-out; }
 .panel {
   width: 300px;
+  scale: var(--scale); /* track the stage's uniform scale (overlays now live at body level) */
   background: var(--tile-face);
   border-radius: 24px;
   padding: 26px 22px;
