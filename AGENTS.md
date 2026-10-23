@@ -17,7 +17,7 @@
 ## Locked GDD rulings agents would otherwise violate
 
 - **DOM rendering, no canvas engine**; one `div.tile` per tile (`z-index = 100 + layer × 10`, transform-only animation).
-- **Tiles are portrait 5:7 sprite `<img>`s** from `assets/tiles/*.png` (face→file map in `src/data/assets.js`, GDD §10.3 v0.3.4); fit is the level-independent pair `{w, h}` (`th = clamp(min((aw/8)×7/5, (ah − 4·7)/12), 26, 84)`); each layer sits `DY = 7` design px above the one below (`--ty = row·th − layer·DY`) — no CSS rim/shadow/chip stacks on tiles.
+- **Tiles are portrait 5:7 sprite `<img>`s** from `assets/tiles/*.png` (face→file map in `src/data/assets.js`, GDD §10.3 v0.3.4); fit is the level-independent pair `{w, h}` (`th = clamp(min((aw/5)×7/5, (ah − 6·7)/8), 26, 84)` ≈52 × 72.75 design px, v0.3.5 1.5×-tile canon); each layer sits `DY = 7` design px above the one below (`--ty = row·th − layer·DY + stackSpread`, stackSpread = maxLayer·DY headroom above row 0) — no CSS rim/shadow/chip stacks on tiles.
 - **Hidden tiles are flat solid slate `#4a3f52`** (CSS `.back`) — no patterns, no `#tile-back` symbol (GDD §3.5).
 - The DFS **solver is generation-time only** — never runs during gameplay (GDD §8.3).
 - There is **no selection state**: every tap on a free tile banks it instantly (logical celles freed at tap time; flight to bank is cosmetic, GDD §3.3/§14.2).
@@ -31,7 +31,7 @@
 ## When code lands
 
 - Target file tree is fixed in GDD §14.1 (`index.html`, `manifest.webmanifest`, `sw.js`, `data/levels-*.json`, `css/`, `src/{core,data,view}/`) — put new files there.
-- Level data is agent-authored: 60 levels across 5 chapter files (base shapes, GDD §7.2), validated against §7.1 — even tile count, `cols = 8` exactly (uniform tile size, GDD v0.3.3), `6 ≤ rows ≤ 12`, layer L>0 cells must sit on a layer-L−1 footprint, `hidden ≤ 25%` of tiles and `0` for levels 1–12.
+- Level data is agent-authored: 60 levels across 5 chapter files (base shapes, GDD §7.2), validated against §7.1 — even tile count, `cols = 5` exactly (uniform tile size, GDD v0.3.5 1.5×-tile canon), `4 ≤ rows ≤ 8`, ≤ 7 layers, layer L>0 cells must sit on a layer-L−1 footprint, `hidden ≤ 25%` of tiles and `0` for levels 1–12.
 - Solvability check per level: fixed-seed deal + 10 fresh-seed re-deals construct, solver backstop passes (GDD §22).
 - Conventions: ≤ ~200 lines/module, JSDoc types on exports, no classes without reason (GDD §14.4).
 

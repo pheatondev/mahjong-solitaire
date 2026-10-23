@@ -10,12 +10,11 @@
       "hidden": 0,
       "layers": [
         [
-          "...AA...",
-          "..AAAA..",
-          ".AAAAAA.",
-          "..AAAA..",
-          "...AA...",
-          "........"
+          ".AAA.",
+          "AAAA.",
+          "AAAAA",
+          "AAAA.",
+          ".AA.."
         ]
       ]
     },
@@ -27,12 +26,12 @@
       "hidden": 0,
       "layers": [
         [
-          "...AA...",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          "...AA...",
-          "........"
+          ".AA..",
+          "AAAA.",
+          "AAAAA",
+          "AAAAA",
+          "AAAA.",
+          ".AA.."
         ]
       ]
     },
@@ -44,12 +43,12 @@
       "hidden": 0,
       "layers": [
         [
-          "...AA...",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          "..AAAA..",
-          "...AA..."
+          ".AAA.",
+          "AAAA.",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAA."
         ]
       ]
     },
@@ -61,12 +60,11 @@
       "hidden": 0,
       "layers": [
         [
-          "........",
-          ".AAAAAA.",
-          ".AA..AA.",
-          ".AA..AA.",
-          ".AAAAAA.",
-          "........"
+          "AA.AA",
+          "AA.AA",
+          "AA.AA",
+          "AA.AA",
+          "AA.AA"
         ]
       ]
     },
@@ -78,12 +76,12 @@
       "hidden": 0,
       "layers": [
         [
-          "........",
-          "AAAAAAAA",
-          "AAA..AAA",
-          "AAA..AAA",
-          "AAAAAAAA",
-          "........"
+          "AAAAA",
+          "AAAAA",
+          "AA.AA",
+          "AA.AA",
+          "AAAAA",
+          "AAAAA"
         ]
       ]
     },
@@ -95,12 +93,13 @@
       "hidden": 0,
       "layers": [
         [
-          "AAAAAAAA",
-          "AAA..AAA",
-          "AAA..AAA",
-          "AAA..AAA",
-          "AAAAAAAA",
-          "........"
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AA.AA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA"
         ]
       ]
     },
@@ -112,20 +111,14 @@
       "hidden": 0,
       "layers": [
         [
-          "........",
-          "AAAAAAAA",
-          "AAAAAAAA",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          "........"
-        ],
-        [
-          "........",
-          "AAAAAAAA",
-          "........",
-          "........",
-          "........",
-          "........"
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "..A.."
         ]
       ]
     },
@@ -137,20 +130,14 @@
       "hidden": 0,
       "layers": [
         [
-          "AAAAAAAA",
-          "AAAAAAAA",
-          "AAAAAAAA",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          "........"
-        ],
-        [
-          "..AAAA..",
-          "........",
-          "........",
-          "........",
-          "........",
-          "........"
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA"
         ]
       ]
     },
@@ -162,20 +149,24 @@
       "hidden": 0,
       "layers": [
         [
-          "AAAAAAAA",
-          "AAAAAAAA",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA."
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA"
         ],
         [
-          "..AAAA..",
-          "........",
-          "........",
-          "........",
-          "........",
-          "........"
+          "AAAA.",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          "....."
         ]
       ]
     },
@@ -187,20 +178,24 @@
       "hidden": 0,
       "layers": [
         [
-          "AAAAAAAA",
-          "AAAAAAAA",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA."
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA"
         ],
         [
-          ".AAAAAA.",
-          "........",
-          "........",
-          "........",
-          "........",
-          "........"
+          "AAAA.",
+          ".AA..",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          "....."
         ]
       ]
     },
@@ -212,20 +207,24 @@
       "hidden": 0,
       "layers": [
         [
-          "AAAAAAAA",
-          "AAAAAAAA",
-          "AAAAAAAA",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA."
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA"
         ],
         [
-          "AAAAAAAA",
-          "........",
-          "........",
-          "........",
-          "........",
-          "........"
+          "AAAAA",
+          "AAAAA",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          "....."
         ]
       ]
     },
@@ -237,22 +236,34 @@
       "hidden": 0,
       "layers": [
         [
-          "AAAAAAAA",
-          "AAAAAAAA",
-          "AAAAAAAA",
-          "AAAAAAAA",
-          ".AAAAAA.",
-          ".AAAAAA.",
-          ".AAAAAA."
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA",
+          "AAAAA"
         ],
         [
-          "..AAAA..",
-          "........",
-          "........",
-          "........",
-          "........",
-          "........",
-          "........"
+          "AAAAA",
+          "AAAAA",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          "....."
+        ],
+        [
+          "AAAA.",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          ".....",
+          "....."
         ]
       ]
     }

@@ -1,21 +1,22 @@
 #!/usr/bin/env node
-/* scripts/build-levels.mjs — M2 content authoring tool (GDD §7.2: the build agent authors
-   all base shapes and all 60 level entries — shapes, candy level names; t2/t3 stay null
-   so the §4.2 formulas apply; hidden counts follow the §6 curve). NOT part of the deploy:
-   it deterministically writes the committed data/levels-1..5.json.
+/* scripts/build-levels.mjs — M2 content authoring tool (GDD §7.2: the build agent
+   authors all base shapes and all 60 level entries — shapes, candy level names; t2/t3
+   stay null so the §4.2 formulas apply; hidden counts follow the §6 curve). NOT part
+   of the deploy: it deterministically writes the committed data/levels-1..5.json.
 
-   v0.3.3 reshaping (uniform tile size, §14.2): every board is ≤ 8 columns — the
-   §7.1 colsMax — so `computeFit` yields the SAME tile size for every level
-   (T = availW/8 ≈ 47.5 design px). Levels that previously used wider boards were
-   re-authored as narrower silhouettes with deeper/layered plate stacks; all
-   per-level tile counts, names, hidden curves and §6 bands are preserved exactly,
-   so score/threshold math and save data stay valid.
+   v0.3.5 reshaping (1.5× tiles, user feedback): the board collapses to exactly
+   5 columns × ≤ 8 rows (§7.1) so `computeFit` yields ≈ 52 × 72.75 design px —
+   ~1.46× the v0.3.4 tile size — for EVERY level. Levels are re-sculpted as
+   narrow tower/keep silhouettes with deeper plate ladders (bands climb to
+   7 layers, §6); ALL per-level tile counts, names, hidden counts and §6
+   tile-range curves are preserved exactly from the v0.3.3 plan, so score/threshold
+   math and save data stay valid.
 
    Every generated level is asserted against:
    - §6 difficulty bands (tile count range, layer-count range per level id)
-   - §7.1 layout validity via the production validator (cols = 8, rows 6–12, even count,
+   - §7.1 layout validity via the production validator (cols = 5, rows 4–8, even count,
      layer L>0 sits on layer L−1 — no floating tiles —, hidden ≤ floor(tiles/4), hidden = 0
-     for levels 1–12, consecutive ids, 12 levels per chapter)
+     for levels 1–12, consecutive ids, 12 levels per chapter, ≤ 7 layers)
    - the 136-tile standard deck (a level can never request more tiles than the bag holds, §8.1)
    - a per-level expected tile count (authoring self-check against hand math)
 
@@ -47,7 +48,7 @@ const plate = (...runs) => (g) => runs.forEach(([r, c0, len]) => hrun(g, r, c0, 
 const slab = (w, h) => (g) => rect(g, 0, 0, w, h);
 
 /** Finalize a set of layer grids (all drawn on the same W×H grid):
- *  1. pad rows/cols up to §7.1 minimums (6 × 8) symmetrically — every layer gets the
+ *  1. pad rows/cols up to §7.1 minimums (4 × 5) symmetrically — every layer gets the
  *     same offset so vertical stacking stays aligned;
  *  2. assert §7.1 bounds and that every layer-L>0 glyph sits on a layer-(L−1) glyph;
  *  3. return layers as row strings. */
@@ -90,159 +91,97 @@ function build(drawFns) {
   return layers;
 }
 
-/** Composed plate-stack builder (v0.3.3): ENTRY = [w, h, [layerRunSpecs…]] on an
- *  8×h grid; the first layer is a full w×h slab, every further layer is a plate
- *  of [row, col0, len] runs (must be ⊆ the layer below). */
+/** Composed plate-stack builder (v0.3.5): ENTRY = [w, h, [layerRunSpecs…]] on a
+ *  5×h grid; the first layer is a full w×h slab, every further layer is a plate
+ *  of [row, col0, len] runs (must be ⊆ the layer below). Run shorthands below. */
 function slabStack(w, h, plates) {
   setBoard(w, h);
   return build([slab(w, h), ...plates.map((runs) => plate(...runs))]);
 }
 
-/* ------------------------------------------------------------------ shapes
-   Tier stacks (layer 1+) are always nested runs on a solid lower row —
-   the generic support assert catches any placement mistake at build time. */
+/* Run shorthand: on the 5-wide canon, runs default to horizontally centered. */
+const R = (r, len, c0) => [r, c0 ?? Math.floor((5 - len) / 2), len];
+const lg = (r0, n, len = 5) => Array.from({ length: n }, (_, i) => R(r0 + i, len)); // ladder segment
 
-function pebble(profile) { // oval (≤ 8 cols: max profile width = 6)
-  const w = Math.max(...profile) + 2;
-  setBoard(w, profile.length);
-  return build([(g) => profile.forEach((c, r) => hrun(g, r, Math.floor((w - c) / 2), c))]);
+/* ------------------------------------------------------------------ shapes */
+
+/** Centered pebble/oval (§7.2): one layer of centered rows on the 5-wide board. */
+function pebble(profile) {
+  setBoard(5, profile.length);
+  return build([(g) => profile.forEach((len, r) => len && hrun(g, r, Math.floor((5 - len) / 2), len))]);
 }
 
-function ring(ow, oh, hw, hh) { // donut = rect − centered hole
-  setBoard(ow, oh);
+/** Donut shell (§7.2): 5-wide rect minus a centered hole. */
+function ring(oh, holeRows, holeCols = 1, holeRow0 = 0) {
+  setBoard(5, oh);
   return build([(g) => {
-    rect(g, 0, 0, ow, oh);
-    const hc0 = Math.floor((ow - hw) / 2), hr0 = Math.floor((oh - hh) / 2);
-    for (let r = hr0; r < hr0 + hh; r++) for (let c = hc0; c < hc0 + hw; c++) g[r][c] = '.';
+    rect(g, 0, 0, 5, oh);
+    const hc0 = Math.floor((5 - holeCols) / 2);
+    for (let r = holeRow0; r < holeRow0 + holeRows; r++) for (let c = hc0; c < hc0 + holeCols; c++) g[r][c] = '.';
   }]);
 }
 
-function wall(w, wallRows, stackRows, capW = 0) { // full-width wall + 6-wide center stack rows
-  setBoard(w, wallRows + stackRows);
-  const draws = [(g) => {
-    for (let r = 0; r < wallRows; r++) hrun(g, r, 0, w);
-    for (let r = wallRows; r < wallRows + stackRows; r++) hrun(g, r, Math.floor((w - 6) / 2), 6);
-  }];
-  if (capW > 0) draws.push((g) => hrun(g, 0, Math.floor((w - capW) / 2), capW)); // cap on the solid top wall row
-  return build(draws);
+/** Keep: 5×7 slab with a single-cell crown cell centered on row 7. */
+function keep() {
+  setBoard(5, 8);
+  return build([(g) => { rect(g, 0, 0, 5, 7); hrun(g, 7, 2, 1); }]);
 }
 
-function cross(hRows, wCols, tiers = []) { // plus: 4-wide vertical bar + 4-row horizontal bar
-  setBoard(wCols, hRows);
-  const cy = Math.floor(hRows / 2);
-  const draws = [(g) => {
-    rect(g, Math.floor((wCols - 4) / 2), 0, 4, hRows);
-    for (let r = cy - 2; r < cy + 2; r++) hrun(g, r, 0, wCols);
-  }];
-  for (const tw of tiers) draws.push((g) => hrun(g, cy - 2, Math.floor((wCols - tw) / 2), tw)); // tier on a horizontal-bar row
-  return build(draws);
-}
-
-function heart(rows, tiers = []) { // rows: [solidWidth] | [left, gap, right]; widest row carries tiers
-  const norm = rows.map((sp) => (typeof sp === 'number' ? [sp] : sp));
-  const widths = norm.map((sp) => (sp.length === 1 ? sp[0] : sp[0] + sp[1] + sp[2]));
-  const w = Math.max(8, ...widths);
-  setBoard(w, norm.length);
-  const rmax = norm.findIndex((sp) => sp.length === 1); // tiers sit on the first solid (non-gap) row
-  const draws = [(g) => norm.forEach((sp, r) => {
-    if (sp.length === 1) hrun(g, r, Math.floor((w - sp[0]) / 2), sp[0]);
-    else {
-      const c0 = Math.floor((w - (sp[0] + sp[1] + sp[2])) / 2);
-      hrun(g, r, c0, sp[0]); hrun(g, r, c0 + sp[0] + sp[1], sp[2]);
-    }
-  })];
-  for (const tw of tiers) draws.push((g) => hrun(g, rmax, Math.floor((w - tw) / 2), tw));
-  return build(draws);
-}
-
-function flower(w, h, tiers = [], cuts = false) { // bloom = rect (− corner cuts) + stacked center tiers
-  setBoard(w, h);
-  const draws = [(g) => {
-    rect(g, 0, 0, w, h);
-    if (cuts) for (const [c0, r0] of [[0, 0], [w - 2, 0], [0, h - 2], [w - 2, h - 2]]) {
-      for (let dr = 0; dr < 2; dr++) for (let dc = 0; dc < 2; dc++) g[r0 + dr][c0 + dc] = '.';
-    }
-  }];
-  const mid = Math.floor(h / 2); // a full-width row (corner cuts never reach it)
-  for (const tw of tiers) draws.push((g) => hrun(g, mid, Math.floor((w - tw) / 2), tw));
-  return build(draws);
-}
-
-function tunnel(w, topRows, botRows, sideW, midRows, tiers = []) { // frame walls + open middle
-  setBoard(w, topRows + botRows + midRows);
-  const draws = [(g) => {
-    for (let r = 0; r < topRows; r++) hrun(g, r, 0, w);
-    for (let r = topRows; r < topRows + midRows; r++) { hrun(g, r, 0, sideW); hrun(g, r, w - sideW, sideW); }
-    for (let r = topRows + midRows; r < topRows + midRows + botRows; r++) hrun(g, r, 0, w);
-  }];
-  for (const tw of tiers) draws.push((g) => hrun(g, topRows, 0, tw)); // tiers stacked over the lower side column
-  return build(draws);
-}
-
-/** tunnel frame as a base draw (for plate compositions on its solid rows 0–topRows,
- *  botRows) — same silhouette as `tunnel` without the tier layers. */
-function tunnelFrame(w, topRows, botRows, sideW, midRows) {
-  return (g) => {
-    for (let r = 0; r < topRows; r++) hrun(g, r, 0, w);
-    for (let r = topRows; r < topRows + midRows; r++) { hrun(g, r, 0, sideW); hrun(g, r, w - sideW, sideW); }
-    for (let r = topRows + midRows; r < topRows + midRows + botRows; r++) hrun(g, r, 0, w);
+/** Cat (§7.2, 5-wide): 2+2 ear legs rows 0–1, full head rows 2–6, 5-wide paws row 7;
+ *  optional plate ladders climb the head. */
+function cat(plates) {
+  setBoard(5, 8);
+  const base = (g) => {
+    for (let r = 0; r < 2; r++) { hrun(g, r, 0, 2); hrun(g, r, 3, 2); }
+    for (let r = 2; r < 8; r++) hrun(g, r, 0, 5);
   };
+  const P = plates ?? [lg(2, 4), lg(2, 4)];
+  return build([base, ...P.map((runs) => plate(...runs))]);
 }
 
-function cat(headW, headH, bodyH, earRows = 2, tiers = []) { // ears + head + body row(s) + paws
-  const bw = headW + 2;
-  setBoard(bw, earRows + headH + bodyH + 1);
-  const h0 = earRows, b0 = earRows + headH;
-  const draws = [(g) => {
-    for (let r = 0; r < earRows; r++) { hrun(g, r, 1, 2); hrun(g, r, bw - 3, 2); }
-    for (let r = h0; r < b0; r++) hrun(g, r, 1, headW);
-    for (let r = b0; r < b0 + bodyH; r++) hrun(g, r, 0, bw);
-    hrun(g, b0 + bodyH, Math.floor((bw - 2) / 2), 2);
-  }];
-  for (const tw of tiers) draws.push((g) => hrun(g, b0 - 1, Math.floor((bw - tw) / 2), tw)); // tiers on the head bottom row
-  return build(draws);
+/** Heart (§7.2, 5-wide): lobe rows (2+2 with a 1-wide cleft) + solid body rows;
+ *  plate ladders climb the body (default from row 3). */
+function heart(plates) {
+  setBoard(5, 8);
+  const base = (g) => {
+    for (let r = 0; r < 2; r++) { hrun(g, r, 0, 2); hrun(g, r, 3, 2); }
+    for (let r = 2; r < 8; r++) hrun(g, r, 0, 5);
+  };
+  const P = plates ?? [lg(3, 4), lg(3, 4)];
+  return build([base, ...P.map((runs) => plate(...runs))]);
 }
 
-/** Castle: wall rows with a 2-cell gate notch from row 1 down + crown tiers (v0.3.3
- *  narrow: w = 8 always). Tier runs ≤ 6 sit fully inside either gate side. */
-function castle(w, rowCount, tiers = []) {
-  setBoard(w, rowCount);
-  const gc = Math.floor(w / 2) - 1;
-  const draws = [(g) => {
-    for (let r = 0; r < rowCount; r++) hrun(g, r, 0, w);
-    for (let r = 1; r < rowCount; r++) { g[r][gc] = '.'; g[r][gc + 1] = '.'; }
-  }];
-  for (const tw of tiers) draws.push((g) => hrun(g, 0, Math.floor((w - tw) / 2), tw));
-  const layers = build(draws);
-  setBoard(w, rowCount); // for plate compositions over the castle base
-  return layers;
+/** Castle (§7.2, 5-wide): wall rows with a single-cell gate notch from row 1 down;
+ *  plate ladders stack over the two legs (rows ≥ 1, cols 0–1 / 3–4). */
+function castle(plates) {
+  setBoard(5, 8);
+  const base = (g) => {
+    for (let r = 0; r < 8; r++) hrun(g, r, 0, 5);
+    for (let r = 1; r < 8; r++) g[r][2] = '.';
+  };
+  return build([base, ...(plates ?? []).map((runs) => plate(...runs))]);
 }
 
-/** 8-wide bug: centered 2-wide tail, bodyRows full shell rows, then a 2-row head.
- *  Solid shell rows (1…bodyRows) carry plate stacks above. */
-function bug(bodyRows, plates = []) {
-  setBoard(8, bodyRows + 3);
-  const draws = [(g) => {
-    hrun(g, 0, 3, 2); // tail
-    for (let r = 1; r <= bodyRows; r++) hrun(g, r, 0, 8);
-    for (let r = bodyRows + 1; r < bodyRows + 3; r++) hrun(g, r, 2, 4); // head
-  }];
-  for (const runs of plates) draws.push(plate(...runs));
-  return build(draws);
-}
+/** Castle-leg plate: `n` rows of both legs (cols 0–1 and 3–4) from row r0. */
+const legs = (r0, n) => [
+  ...Array.from({ length: n }, (_, i) => [r0 + i, 0, 2]),
+  ...Array.from({ length: n }, (_, i) => [r0 + i, 3, 2]),
+];
 
 /* ------------------------------------------------------------------ level plan */
 
-// §6 difficulty bands by level id (asserted below, per level):
-//   A 1–6: 18–36 tiles, 1 layer · B 7–12: 36–60, 1–2 · C 13–24: 60–84, 2–3, hidden 1–3
-//   D 25–36: 84–108, 3–4 · E 37–48: 108–136, 3–5 · F 49–60: 120–136, 4–5
+// §6 difficulty bands by level id (asserted below, per level). v0.3.5: the 5×8
+// footprint forces deeper stacks, so the layer ranges widen accordingly
+// (tile ranges, hidden shares and the banding itself are unchanged):
+//   A 1–6: 18–36 tiles, 1 layer · B 7–12: 36–60, 1–3 · C 13–24: 60–84, 3–4, hidden 1–3
+//   D 25–36: 84–108, 3–5 · E 37–48: 108–136, 4–6 · F 49–60: 120–136, 5–7
 const BANDS = [
   { lo: 1, hi: 6, tiles: [18, 36], layers: [1, 1] },
-  { lo: 7, hi: 12, tiles: [36, 60], layers: [1, 2] },
-  { lo: 13, hi: 24, tiles: [60, 84], layers: [2, 3] },
-  { lo: 25, hi: 36, tiles: [84, 108], layers: [3, 4] },
-  { lo: 37, hi: 48, tiles: [108, 136], layers: [3, 5] },
-  { lo: 49, hi: 60, tiles: [120, 136], layers: [4, 5] },
+  { lo: 7, hi: 12, tiles: [36, 60], layers: [1, 3] },
+  { lo: 13, hi: 24, tiles: [60, 84], layers: [3, 4] },
+  { lo: 25, hi: 36, tiles: [84, 108], layers: [3, 5] },
+  { lo: 37, hi: 48, tiles: [108, 136], layers: [4, 6] },
+  { lo: 49, hi: 60, tiles: [120, 136], layers: [5, 7] },
 ];
 const bandOf = (id) => BANDS.find((b) => id >= b.lo && id <= b.hi);
 
@@ -255,7 +194,7 @@ const hiddenFor = (id, tiles) => {
   return Math.floor(tiles / 4); // = 25% (validator cap is the same value)
 };
 
-// 60 candy level names (§6/§7.2 — build-agent-authored)
+// 60 candy level names (§6/§7.2 — build-agent-authored; unchanged v0.3.5)
 const NAMES = [
   // Melon 1–12
   'First Pops', 'Bubble Bounce', 'Tiny Treats', 'Sherbet Circle', 'Sweet Ring-Around', 'Peppermint Path',
@@ -274,80 +213,75 @@ const NAMES = [
   'Gumball Gauntlet', 'Candy Cascade', 'Final Frolic', 'The Big Sprinkle', 'Sugar Showdown', 'Sweetest Victory',
 ];
 
-// id → [expected tile count (authoring self-check), shape call]. Tier stacks and
-// plate stacks list bottom-up and always nest on a solid lower layer (the builder
-// asserts support). v0.3.3: every level is ≤ 8 cols; tile counts identical to the
-// pre-reshape plan.
+// id → [expected tile count (authoring self-check), shape call]. Tile counts are
+// IDENTICAL to the v0.3.3 plan; silhouettes are re-sculpted to the 5-wide canon.
 const PLAN = {
   /* Band A — Pebbles & Rings (1 layer, 18–36 tiles) */
-  1: [18, () => pebble([2, 4, 6, 4, 2])],
-  2: [22, () => pebble([2, 6, 6, 6, 2])],
-  3: [26, () => pebble([2, 6, 6, 6, 4, 2])],
-  4: [20, () => ring(6, 4, 2, 2)],
-  5: [28, () => ring(8, 4, 2, 2)],
-  6: [34, () => ring(8, 5, 2, 3)],
-  /* Band B — Walls (1–2 layers, 36–60) */
-  7: [36, () => wall(8, 2, 2, 8)],
-  8: [40, () => wall(8, 3, 2, 4)],
-  9: [44, () => wall(8, 2, 4, 4)],
-  10: [46, () => wall(8, 2, 4, 6)],
-  11: [50, () => wall(8, 3, 3, 8)],
-  12: [54, () => wall(8, 4, 3, 4)],
-  /* Band C — Blueberry: first layers + first fog (2–3 layers, 60–84, hidden 1–3) */
-  13: [64, () => flower(8, 6, [8, 8])],
-  14: [66, () => flower(8, 7, [8, 2])],
-  15: [64, () => flower(8, 7, [8])],
-  16: [68, () => flower(8, 7, [8, 4])],
-  17: [68, () => cross(12, 8, [4])],
-  18: [70, () => cross(12, 8, [4, 2])],
-  19: [74, () => tunnel(8, 2, 2, 3, 6, [3, 3])],
-  20: [78, () => cat(6, 5, 4, 2, [4, 2])],
-  21: [84, () => heart([[3, 2, 3], 8, 8, 8, 8, 8, 8, 8, 8, [3, 2, 3]], [8])],
-  22: [82, () => heart([[3, 2, 3], 8, 8, 8, 8, 8, 8, 8, 8, [3, 2, 3]], [6])],
-  23: [78, () => heart([[3, 2, 3], [3, 2, 3], 8, 8, 8, 8, 8, 8, [3, 2, 3]], [8, 4])],
-  24: [82, () => heart([[3, 2, 3], [3, 2, 3], 8, 8, 8, 8, 8, 8, [3, 2, 3]], [8, 8])],
-  /* Band D — Lemon: towers & keeps (3–4 layers, 84–108, hidden ~12%) */
-  25: [90, () => flower(8, 9, [8, 8, 2])],
-  26: [86, () => tunnel(8, 2, 2, 4, 6, [4, 2])],
-  27: [104, () => slabStack(8, 10, [
-      [[3, 0, 8], [4, 0, 8]],
-      [[3, 0, 8]],
-    ])],
-  28: [86, () => castle(8, 12, [6, 6])],
-  29: [102, () => flower(8, 10, [8, 8, 6])],
-  30: [94, () => tunnel(8, 2, 2, 4, 7, [4, 2])],
-  31: [106, () => flower(8, 12, [8, 2])],
-  32: [92, () => flower(8, 10, [8, 4])],
-  33: [106, () => flower(8, 11, [8, 6, 4])],
-  34: [102, () => tunnel(8, 3, 2, 4, 7, [4, 2])],
-  35: [102, () => flower(8, 11, [8, 4, 2])],
-  36: [94, () => flower(8, 10, [6, 4, 4])],
-  /* Band E — Grape: grand boards (3–5 layers, 108–136, hidden ~18%) */
-  37: [126, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8], [6, 0, 8]], [[5, 0, 6]]])],
-  38: [126, () => slabStackFrom([tunnelFrame(8, 2, 2, 4, 8), plate([0, 0, 8], [1, 0, 8], [10, 0, 8]), plate([0, 0, 6])], 12)],
-  39: [120, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8]], [[4, 0, 8]]])],
-  40: [108, () => slabStack(8, 12, [[[4, 0, 8]], [[4, 0, 4]]])],
-  41: [134, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8], [6, 0, 8], [7, 0, 8]], [[4, 0, 6]]])],
-  42: [130, () => slabStackFrom([tunnelFrame(8, 2, 2, 4, 8), plate([0, 0, 8], [1, 0, 8], [10, 0, 8], [11, 0, 8]), plate([0, 4, 2])], 12)],
-  43: [132, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8], [6, 0, 8]], [[4, 0, 8], [5, 0, 4]]])],
-  44: [128, () => slabStackFrom([...castleDraw(8, 12), plate([1, 0, 3], [1, 5, 3], [2, 0, 3], [2, 5, 3], [3, 0, 3], [3, 5, 3], [4, 0, 3], [4, 5, 3], [5, 0, 3], [5, 5, 3], [6, 0, 3], [6, 5, 3]), plate([1, 0, 3], [2, 0, 3], [3, 0, 3], [4, 0, 3], [5, 0, 3], [6, 0, 3])], 12)],
-  45: [132, () => slabStack(8, 11, [[[4, 0, 8], [5, 0, 8], [6, 0, 8], [7, 0, 8]], [[4, 0, 8], [5, 0, 4]]])],
-  46: [134, () => slabStackFrom([tunnelFrame(8, 2, 2, 4, 8), plate([0, 0, 8], [1, 0, 8], [10, 0, 8], [11, 0, 8]), plate([0, 0, 6])], 12)],
-  47: [134, () => slabStack(8, 11, [[[4, 0, 8], [5, 0, 8], [6, 0, 8], [7, 0, 8]], [[4, 0, 8], [5, 0, 6]]])],
-  48: [128, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8], [6, 0, 8]], [[4, 0, 8]]])],
-  /* Band F — Rainbow: shell finale (4–5 layers, 120–136, hidden 25%) */
-  49: [122, () => bug(9, [[[2, 0, 8], [3, 0, 8]], [[2, 0, 8], [3, 0, 8]], [[2, 0, 8]]])],
-  50: [134, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8]], [[4, 0, 8], [5, 0, 4]], [[4, 0, 8]], [[4, 4, 2]]])],
-  51: [132, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8]], [[4, 0, 8], [5, 0, 4]], [[4, 0, 8]]])],
-  52: [132, () => bug(9, [[[2, 0, 8], [3, 0, 8], [4, 0, 8]], [[2, 0, 8], [3, 0, 8]], [[2, 0, 8]], [[2, 2, 2]]])],
-  53: [134, () => slabStack(8, 12, [[[7, 0, 8], [8, 0, 8]], [[7, 0, 8], [8, 0, 4]], [[7, 0, 8]], [[7, 4, 2]]])],
-  54: [134, () => slabStackFrom([tunnelFrame(8, 2, 2, 4, 8), plate([0, 0, 8], [1, 0, 8]), plate([0, 0, 8], [1, 0, 4]), plate([0, 0, 8]), plate([0, 3, 2])], 12)],
-  55: [134, () => bug(9, [[[2, 0, 8], [3, 0, 8], [4, 0, 8], [5, 0, 8]], [[2, 0, 8], [3, 0, 8]], [[2, 2, 4]]])],
-  56: [134, () => slabStack(8, 12, [[[1, 0, 8], [2, 0, 8]], [[1, 0, 8], [2, 0, 4]], [[1, 0, 8]], [[1, 4, 2]]])],
-  57: [132, () => slabStack(8, 11, [[[4, 0, 8], [5, 0, 8], [6, 0, 8]], [[4, 0, 8], [5, 0, 4]], [[4, 0, 8]]])],
-  58: [136, () => bug(9, [[[2, 0, 8], [3, 0, 8], [4, 0, 8], [5, 0, 8]], [[2, 0, 8], [3, 0, 8]], [[2, 1, 6]]])],
-  59: [122, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 4]], [[4, 0, 8]], [[4, 2, 4]], [[4, 3, 2]]])],
-  60: [136, () => slabStack(8, 12, [[[4, 0, 8], [5, 0, 8]], [[4, 0, 8], [5, 0, 4]], [[4, 0, 8]], [[4, 2, 4]]])],
+  1: [18, () => pebble([3, 4, 5, 4, 2])],
+  2: [22, () => pebble([2, 4, 5, 5, 4, 2])],
+  3: [26, () => pebble([3, 4, 5, 5, 5, 4])],
+  4: [20, () => ring(5, 5)],           // two 2-wide legs, 5 rows
+  5: [28, () => ring(6, 2, 1, 2)],
+  6: [34, () => ring(7, 1, 1, 3)],
+  /* Band B — Keeps & first stacks (1–3 layers, 36–60) */
+  7: [36, () => keep()],
+  8: [40, () => slabStack(5, 8, [])],
+  9: [44, () => slabStack(5, 8, [[R(0, 4)]])],
+  10: [46, () => slabStack(5, 8, [[R(0, 4), R(1, 2)]])],
+  11: [50, () => slabStack(5, 8, [lg(0, 2)])],
+  12: [54, () => slabStack(5, 8, [lg(0, 2), [R(0, 4)]])],
+  /* Band C — Blueberry: deep bloom keeps (3–4 layers, 60–84, hidden 1–3) */
+  13: [64, () => slabStack(5, 8, [lg(0, 4), [R(0, 4)]])],
+  14: [66, () => slabStack(5, 8, [lg(0, 4), [R(0, 4), R(1, 2)]])],
+  15: [64, () => slabStack(5, 8, [[R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 5), R(1, 3)]])],
+  16: [68, () => slabStack(5, 8, [lg(0, 4), [R(0, 4), R(1, 4)]])],
+  17: [68, () => slabStack(5, 8, [[...lg(0, 4), R(4, 4)], [R(0, 4)]])],
+  18: [70, () => slabStack(5, 8, [[...lg(0, 4), R(4, 4)], [R(0, 5)], [R(0, 1)]])],
+  19: [74, () => slabStack(5, 8, [lg(0, 6), [R(0, 4)]])],
+  20: [78, () => cat()],
+  21: [84, () => slabStack(5, 8, [lg(0, 6), lg(0, 2), [R(0, 4)]])],
+  22: [82, () => slabStack(5, 8, [lg(0, 6), lg(0, 2), [R(0, 2)]])],
+  23: [78, () => heart()],
+  24: [82, () => heart([[...lg(3, 4)], [...lg(3, 4)], [R(3, 4)]])],
+  /* Band D — Lemon: towers & citadels (3–5 layers, 84–108, hidden ~12%) */
+  25: [90, () => slabStack(5, 8, [lg(0, 6), lg(0, 4)])],
+  26: [86, () => slabStack(5, 8, [[...lg(0, 4), R(4, 4)], [R(0, 5), R(1, 5), R(2, 4)], [R(0, 4), R(1, 4)]])],
+  27: [104, () => slabStack(5, 8, [[...lg(0, 6), R(6, 4)], lg(0, 4), [R(0, 4), R(1, 4)], [R(0, 2)]])],
+  28: [86, () => castle([[...legs(1, 7)], [...legs(1, 4)], [...legs(1, 2)], [[1, 0, 1]]])],
+  29: [102, () => slabStack(5, 8, [[...lg(0, 6), R(6, 4)], lg(0, 4), [R(0, 4), R(1, 4)]])],
+  30: [94, () => slabStack(5, 8, [lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 4), R(1, 4)]])],
+  31: [106, () => slabStack(5, 8, [lg(0, 8), lg(0, 4), [R(0, 5)], [R(0, 1)]])],
+  32: [92, () => slabStack(5, 8, [lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 4), R(1, 2)]])],
+  33: [106, () => slabStack(5, 8, [lg(0, 8), [...lg(0, 4), R(4, 4)], [R(0, 2)]])],
+  34: [102, () => slabStack(5, 8, [[...lg(0, 7), R(7, 3)], lg(0, 4), [R(0, 4)]])],
+  35: [102, () => slabStack(5, 8, [lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], lg(0, 2), [R(0, 4), R(1, 2)]])],
+  36: [94, () => slabStack(5, 8, [[...lg(0, 4), R(4, 4)], lg(0, 4), lg(0, 2)])],
+  /* Band E — Grape: grand towers (4–6 layers, 108–136, hidden ~18%) */
+  37: [126, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)]])],
+  38: [126, () => slabStack(5, 8, [lg(0, 8), [...lg(0, 6), R(6, 4)], lg(0, 2), [R(0, 2)]])],
+  39: [120, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), lg(0, 2)])],
+  40: [108, () => slabStack(5, 8, [lg(0, 8), lg(0, 4), [R(0, 4), R(1, 4)]])],
+  41: [134, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), lg(0, 2), [R(0, 3)], [R(0, 1)]])],
+  42: [130, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 4)]])],
+  43: [132, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), lg(0, 2), [R(0, 2)]])],
+  44: [128, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), [R(0, 4), R(1, 4)]])],
+  45: [132, () => slabStack(5, 8, [[...lg(0, 7), R(7, 3)], [...lg(0, 7), R(7, 3)], lg(0, 2), [R(0, 4), R(1, 2)]])],
+  46: [134, () => slabStack(5, 8, [lg(0, 8), [...lg(0, 6), R(6, 4)], [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 4)]])],
+  47: [134, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), lg(0, 4), [R(0, 4)]])],
+  48: [128, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 2)]])],
+  /* Band F — Rainbow: tower finale (5–7 layers, 120–136, hidden 25%) */
+  49: [122, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), lg(0, 2), [R(0, 2)]])],
+  50: [134, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), lg(0, 2), [R(0, 3)], [R(0, 1)]])],
+  51: [132, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), lg(0, 2), [R(0, 2)]])],
+  52: [132, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 4)], [R(0, 2)]])],
+  53: [134, () => slabStack(5, 8, [lg(0, 8), [...lg(0, 6), R(6, 4)], [R(0, 5), R(1, 5), R(2, 5), R(3, 1)], [R(0, 4)]])],
+  54: [134, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), [R(0, 5), R(1, 5), R(2, 2)], [R(0, 2)]])],
+  55: [134, () => slabStack(5, 8, [lg(0, 8), lg(0, 6), lg(0, 2), [R(0, 4), R(1, 4)], [R(0, 4)], [R(0, 2)]])],
+  56: [134, () => slabStack(5, 8, [[...lg(0, 6), R(6, 4)], [...lg(0, 6), R(6, 4)], lg(0, 4), [R(0, 4)], [R(0, 2)]])],
+  57: [132, () => slabStack(5, 8, [lg(0, 8), [...lg(0, 6), R(6, 4)], lg(0, 2), [R(0, 4), R(1, 2)], [R(0, 2)]])],
+  58: [136, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), [R(0, 5), R(1, 5), R(2, 2)], [R(0, 4)]])],
+  59: [122, () => slabStack(5, 8, [[...lg(0, 6), R(6, 4)], lg(0, 6), lg(0, 2), [R(0, 4), R(1, 2)], [R(0, 2)]])],
+  60: [136, () => slabStack(5, 8, [lg(0, 8), lg(0, 8), lg(0, 2), [R(0, 4)], [R(0, 2)]])],
 };
 
 /* ------------------------------------------------------------------ assemble */
@@ -359,23 +293,6 @@ const CHAPTERS = [
   { chapter: 'Grape', accent: '#b46bf2', ids: [37, 48] },
   { chapter: 'Rainbow', accent: '#ff8c42', ids: [49, 60] },
 ];
-
-/** Composed multi-layer build: entry exposes explicit layer draw fns + the shared H. */
-function slabStackFrom(drawFns, h) {
-  setBoard(8, h);
-  return build(drawFns);
-}
-
-/** Castle base only (for plate compositions): wall rows + gate notches. */
-function castleDraw(w, rowCount) {
-  const gc = Math.floor(w / 2) - 1;
-  const rowsAll = Array.from({ length: rowCount }, () => [0, w]);
-  const base = (g) => {
-    rowsAll.forEach(([, len], r) => hrun(g, r, 0, len));
-    for (let r = 1; r < rowCount; r++) { g[r][gc] = '.'; g[r][gc + 1] = '.'; }
-  };
-  return [base];
-}
 
 mkdirSync(join(root, 'data'), { recursive: true });
 const failures = [];
@@ -397,6 +314,7 @@ for (const [ci, ch] of CHAPTERS.entries()) {
     if (layerN < band.layers[0] || layerN > band.layers[1]) {
       failures.push(`level ${id}: layers=${layerN} outside §6 band ${band.layers[0]}–${band.layers[1]}`);
     }
+    if (layerN > 7) failures.push(`level ${id}: layers=${layerN} exceed the 7-layer stack (§6 v0.3.5)`);
     const hidden = hiddenFor(id, tiles);
     if (hidden > Math.floor(tiles / 4)) failures.push(`level ${id}: hidden=${hidden} > cap ${Math.floor(tiles / 4)}`);
     levels.push({ id, name: NAMES[id - 1], t2: null, t3: null, hidden, layers });
@@ -410,7 +328,7 @@ for (const [ci, ch] of CHAPTERS.entries()) {
   if (failures.length === 0) {
     writeFileSync(join(root, 'data', `levels-${ci + 1}.json`), JSON.stringify(json, null, 2) + '\n');
   }
-  console.log(ch.chapter.padEnd(9) + levels.map((l) => `${l.id}:${l.tiles ?? cellCount(l.layers)}h${l.hidden}`).join(' '));
+  console.log(ch.chapter.padEnd(9) + levels.map((l) => `${l.id}:${cellCount(l.layers)}h${l.hidden}x${l.layers.length}`).join(' '));
 }
 
 if (failures.length) {
@@ -418,4 +336,4 @@ if (failures.length) {
   for (const m of failures) console.error(' - ' + m);
   process.exit(1);
 }
-console.log('\nOK — 5 chapters × 12 levels authored; §6 bands + §7.1 validator passed.');
+console.log('\nOK — 5 chapters × 12 levels authored; §6 bands + §7.1 validator passed (v0.3.5 5×8 canon).');

@@ -6,7 +6,7 @@
 | **Genre** | Casual puzzle — mahjong solitaire (tile-matching) |
 | **Platform** | Web (mobile-first), static files on GitHub Pages |
 | **Reference game** | *Mahjong Blast* by Nebula Studio (iOS/Android) |
-| **Doc version** | v0.3.4 — user feedback: user-sourced **pixel-art tile sprites** replace the procedural SVG faces (`assets/tiles/*.png`, §10.3); **tiles redesigned to portrait 5:7** (§14.2 fit formula + board geometry, supersedes the v0.3.3 square fit); **per-layer vertical offset** stacks read as stacks (§14.2, amends the v1 "no per-layer offsets" ruling); **hidden tiles = flat solid slate** (§3.5); family keyline chips retired (§10.3); PWA icons + favicon re-skinned from the sprite art (§15, locked in-browser rasterization). Supersedes v0.3.3 (uniform tile size across levels — the invariant survives, but the size is now the portrait `--tw/--th` pair), which superseded v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets). UI copy per user (v0.3.3, supersedes the §22 ship-time placeholder rename for this surface): Home wordmark = **Mahjong Smoosh**; tagline and Settings about lines removed |
+| **Doc version** | v0.3.5 — user feedback: **1.5×-tile board re-sculpt** — the board canon collapses to **5 columns × 4–8 rows** (§7.1, supersedes the v0.3.3 `cols = 8` lock; the §14.2 fit now yields ≈52 × 72.75 design px portrait tiles, ≈1.46× the v0.3.4 size — the 7-layer spread consumes the literal-1.5× margin) and **max stack depth rises 5 → 7 layers** (§6 band layer ranges widen accordingly; all 60 tile counts, names, hidden counts and §6 band edges unchanged — `build-levels.mjs` re-sculpts silhouettes as 5-wide towers). Supersedes v0.3.4 (user feedback: user-sourced **pixel-art tile sprites** replace the procedural SVG faces (`assets/tiles/*.png`, §10.3); **tiles redesigned to portrait 5:7** (§14.2 fit formula + board geometry, supersedes the v0.3.3 square fit); **per-layer vertical offset** stacks read as stacks (§14.2, amends the v1 "no per-layer offsets" ruling); **hidden tiles = flat solid slate** (§3.5); family keyline chips retired (§10.3); PWA icons + favicon re-skinned from the sprite art (§15, locked in-browser rasterization)), which superseded v0.3.3 (uniform tile size across levels — the invariant survives), v0.3.2 (promo removal + safe-area frame + fit padding) and v0.3.1 (§5.2 best-effort shuffle when the tin holds tiles, constructive guarantee kept for even multisets). UI copy per user (v0.3.3, supersedes the §22 ship-time placeholder rename for this surface): Home wordmark = **Mahjong Smoosh**; tagline and Settings about lines removed |
 | **Date** | 2026-10-23 |
 | **Status** | Implementation-ready — this document is the build contract |
 | **Doc format** | Markdown (`.md`) — human-readable, LLM-readable, renders natively on GitHub |
@@ -314,11 +314,13 @@ A bank world never *mechanically* runs out of free taps (§3.3: banking is alway
 | Levels | Tiles | Layers | Ideas introduced |
 |---|---|---|---|
 | 1–6 | 18–36 | 1 | Free-tile concept, big gaps, no traps |
-| 7–12 | 36–60 | 1–2 | Simple 2-layer stacks, first real choices |
-| 13–24 | 60–84 | 2–3 | Stacked towers, order matters; **first flipped tiles** (1–3 per board) |
-| 25–36 | 84–108 | 3–4 | Wide layouts, partial side-blocks everywhere; hidden share ~12% |
-| 37–48 | 108–136 | 3–5 | Tall + wide combined, decoy pairs; hidden share ~18% |
-| 49–60 | 120–136 | 4–5 | Full-deck boards, "turtle"-class finales; hidden share ~25% (fog-heavy) |
+| 7–12 | 36–60 | 1–3 | Keeps, first plate stacks; module choices on the 5-wide surface |
+| 13–24 | 60–84 | 3–4 | Deep bloom towers, order matters; **first flipped tiles** (1–3 per board) |
+| 25–36 | 84–108 | 3–5 | Tall keeps, partial side-blocks everywhere; hidden share ~12% |
+| 37–48 | 108–136 | 4–6 | Grand towers, decoy pairs; hidden share ~18% |
+| 49–60 | 120–136 | 5–7 | Full-deck 7-layer finale towers; hidden share ~25% (fog-heavy) |
+
+*(Layers column amended v0.3.5 — the 1.5×-tile footprint is 5×8, so every band stacks deeper; tile ranges, hidden shares and band edges are unchanged.)*
 
 - Layout shapes are authored once as ASCII maps (§7); faces are dealt at runtime (§8), so maps are reusable across levels with different deals and score thresholds.
 - The **bank is the core verb from level 1** (§3.3); §7 level data and this curve are unchanged by it (decision round) — staging through the bank simply softens in-level mistakes, and star thresholds stay as-tuned.
@@ -366,22 +368,22 @@ Levels are plain **JSON** (fetched at boot; cacheable by the service worker). On
 
 Rules for a valid layout (validated at runtime, console-warn + skip level in dev):
 
-- Every layer's rows are equal length (rectangle `cols × rows`), `cols = 8` (**amended v0.3.3 — uniform tile size**; **v0.3.4: portrait 5:7 tiles pair with the §14.2 fit, so the board no longer spans the full 8 × 47.5 = 380 px — it spans `8 × tw ≈ 284 px`, centered with wider side air; §7.1 stays `cols = 8` exactly**), `6 ≤ rows ≤ 12`.
+- Every layer's rows are equal length (rectangle `cols × rows`), `cols = 5` (**amended v0.3.5 — 1.5× tiles: the uniform-fit invariant moves to a 5-col canon**; v0.3.3 introduced the rule at `cols = 8`, v0.3.4's portrait 5:7 fit then borderline-squeezed 8 columns onto the board), `4 ≤ rows ≤ 8`. The rendered board spans `5 × tw ≈ 260 design px`, centered with wide side air.
 - A tile on layer `L > 0` must sit on top of a tile footprint at the same `(col,row)` on layer `L-1` (no floating tiles — keeps rendering and blocking logic trivial).
 - Total tiles is **even** (pairs).
 - `hidden` must satisfy `0 ≤ hidden ≤ floor(tiles / 4)` (≤ 25% fog share) and — for teaching pacing — `hidden = 0` for levels 1–12.
 
 ### 7.2 Reserved shapes
 
-Base shapes cover all 60 levels — re-authored by `scripts/build-levels.mjs` (v0.3.3: all boards exactly 8 cols so the §14.2 tile size is uniform; depth comes from nested plate stacks on solid rows). The shape families still span:
+Base shapes cover all 60 levels — re-authored by `scripts/build-levels.mjs` (v0.3.5: all boards exactly 5 columns × ≤ 8 rows so the §14.2 tile size is uniform at ≈1.46× the v0.3.4 fit; depth comes from deep nested plate ladders — bands climb to 7 layers). The shape families still span:
 
 | Shape tag | Use | Footprint |
 |---|---|---|
-| `Pebble` | L1–3 | small oval |
-| `Ring` | L4–6 | donut |
-| `Wall` | L7–12 | full-width wall + 6-wide center stack |
-| `Cross`, `Heart`, `Castle`, `Tunnel`, `Cat`, `Flower` | L13–60 | classic mahjong-style silhouettes |
-| `Slab/-stack`, `Tunnel-frame`, `Bug` | L13–60 | rectangular bodies with stacked plate ladders / 8-wide shell finale |
+| `Pebble` | L1–3 | small centered oval (≤ 5 cols) |
+| `Ring` | L4–6 | legged donut |
+| `Keep`, `Slab` | L7–12 | 5-wide keeps + first stacked caps |
+| `Tower/ladder`, `Cat`, `Heart`, `Castle` | L13–24 | tall plate ladders on solid bodies |
+| `Tower/ladder`, `Castle-legs`, `Keep` | L25–60 | deep wedding-cake towers to the 7-layer finale |
 
 (The pre-reshape `Pyramid`/`Butterfly`/`Turtle` families folded into the slab-stack and tunnel-family equivalents; the shape-silhouette check tests §7.1 rules, not per-chapter shape identity.)
 
@@ -726,7 +728,7 @@ mahjong-lite/
 
 - Each tile = one `div.tile` with `transform: translate3d(x, y, 0)`, `z-index = 100 + layer×10`; side/cover relationships are pure arithmetic.
 - **Per-layer vertical offset (amended v0.3.4, user feedback "add a slight vertical offset between layers"):** every layer sits `DY = 7` design px higher than the one below — `--ty = row × th − layer × DY` (vertical ONLY; no horizontal offset — the uniform 8-col fit leaves zero horizontal slack). The covered tile's baked sprite edge peeks out beneath each upper tile, so stacks read as stacks at a glance. This explicitly supersedes the v1 "no per-layer offsets" ruling. Uniformity is preserved: `DY` is a constant, not a fraction of tile size.
-- **Fit calculation (amended v0.3.4 — portrait tiles):** the fit returns the **pair `{w, h}`** (`--tw × --th`): `th = clamp(min((availW/8)×7/5, (availH − 4·DY)/12), 26, 84)`, `tw = th × 5/7` — height-bound at the 390×844 stage (**≈35.5 × 49.7 design px**, sprite-native 5:7). The fit still depends only on the board area and the global worst case — 8 cols × 12 rows × 5-layer stack (4 offsets) — never on the level's own cols/rows, so **every level renders at the identical tile size** (the v0.3.3 uniform-size ruling survives). Board bbox: width `cols × tw`, height `rows × th + maxLayer × DY`, top offset centers it. Previously (v0.3.3) tiles were square ⌀47.5 px; the §17 hit-target generosity wins tap affordances on top of the portrait rect.
+- **Fit calculation (amended v0.3.5 — 1.5× tiles, 5-col canon):** the fit returns the **pair `{w, h}`** (`--tw × --th`): `th = clamp(min((availW/5)×7/5, (availH − 6·DY)/8), 26, 84)`, `tw = th × 5/7` — height-bound at the 390×844 stage (**≈52 × 72.75 design px**, sprite-native 5:7; 1.46× the v0.3.4 fit — the 2×7 px 7-layer spread eats the remaining margin of a literal 1.5×). The fit still depends only on the board area and the global worst case — 5 cols × 8 rows × 7-layer stack (6 offsets) — never on the level's own cols/rows, so **every level renders at the identical tile size** (the v0.3.3 uniform-size ruling survives). Small shapes pad up to `rowsMin 4` (v0.3.5, was 6) so early levels render as compact centered boards. Board bbox: width `cols × tw`, height `rows × th + maxLayer × DY`, top offset centers it, and the whole tile field is baseline-shifted down by `stackSpread = maxLayer × DY` so the tallest tower occupies the headroom *above* row 0 and never overlaps the bank (`--ty = row·th − layer·DY + stackSpread`; bank-flight start poses share the shift). Previously (v0.3.4) tiles were 35.5 × 49.7 px; the §17 hit-target generosity wins tap affordances on top of the portrait rect.
 - **Match pops happen in the bank** (the twin pair's two slots): animate the two slot tiles (scale+fade+confetti), then clear. Board-side, a tapped tile's cell is freed **logically at tap time** — free-checks see it gone instantly; the flight to the bank is cosmetic and non-blocking. Targeted re-z updates only — never re-render all 136 nodes for one move.
 
 ### 14.3 State machine (coarse)
@@ -831,7 +833,7 @@ Parked by the v1 decision round (in rough priority order):
 | Face-down backs read confusingly on dense stacked boards | Medium | Strong face/back contrast, mid-flip face-swap animation, levels 13–24 start with only 1–2 flipped tiles; playtest check in M4 |
 | Bank seal fail feels harsh for the senior-friendly audience | Medium | Free unlimited instant restart, gentle copy, pre-seal warning tint at 3 faces, undo-first affordance in the no-progress dialog; playtest knob to trial the mercy-undo variant (§3.6) |
 | Landscape-phone stages are small (height-bound scale ~0.4×, tiles ≈13–16 physical px) | Low (niche case) | Dismissible once-per-session portrait hint; landscape-mobile never blocks play; desktop/tablet/laptop are the sanctioned big-screen surfaces; playtest check in M4 that the hint copy reads as advice, not nagging |
-| Layered boards read poorly at small tile sizes | Medium | Per-layer vertical offset DY = 7 px (v0.3.4, §14.2) + baked sprite edges + uniform portrait size 35.5×49.7 px — larger than the pre-reshape worst case and identical on every level |
+| Layered boards read poorly at small tile sizes | Medium | Per-layer vertical offset DY = 7 px (v0.3.4, §14.2) + baked sprite edges + uniform portrait size ≈52 × 72.75 px (v0.3.5: 1.5×-tile re-sculpt) — identical on every level |
 | Solver timeouts on dense boards | Low | Node budget + greedy heuristics; boards ≤ 136; generation-window retry |
 | iOS audio unlock/autoplay quirks | Low | Unlock on first gesture; recipes pure WebAudio; test on real device |
 | GitHub Pages subpath breakage (absolute paths) | Medium | Relative paths only; smoke-test deployed URL pre-release |

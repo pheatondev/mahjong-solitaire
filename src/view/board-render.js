@@ -11,20 +11,21 @@ import { faceName } from '../data/i18n.js';
 /** Per-layer vertical offset (§14.2, v0.3.4): upper layers shift UP by DY so the
  *  lower tile's baked-in bottom edge peeks out — stacks read at a glance. */
 const DY = 7;
+let SPREAD = 0; // row-0 baseline shift (headroom for the tallest stack), set by fit()
 
 const imgFace = (face) => `<img src="${faceFile(face)}" alt="" aria-hidden="true" draggable="false">`;
 const backFace = () => `<i class="back" aria-hidden="true"></i>`;
 
-/** Fit formula (§14.2, v0.3.4): portrait tiles — sprite-native 5:7 aspect — at a
+/** Fit formula (§14.2, v0.3.5): portrait tiles — sprite-native 5:7 aspect — at a
  *  UNIFORM size across all levels. The fit depends only on the board area and
- *  the global worst case (8 cols × 12 rows × 5-layer stack ⇒ 4 offsets), never
- *  on the level's own shape: th = min((aw·7/5)/8, (ah − 4·DY)/12). At the
- *  390×844 stage this is ≈ 34.2 × 47.9 design px. */
+ *  the global worst case (5 cols × 8 rows × 7-layer stack ⇒ 6 offsets), never
+ *  on the level's own shape: th = min((aw·7/5)/5, (ah − 6·DY)/8). At the
+ *  390×844 stage this is ≈ 52 × 72.75 design px (1.46× the v0.3.4 fit). */
 export function computeFit(areaEl, cols, rows) {
   const pad = 5;
   const aw = areaEl.clientWidth - pad * 2;
   const ah = areaEl.clientHeight - pad * 2;
-  const LAYERS_MAX = 5; // §6: deepest realism band (band F) stacks 5 layers
+  const LAYERS_MAX = 7; // §6: deepest stack (band F) climbs 7 layers
   const th = clamp(Math.min((aw / SCHEMA.colsMax) * 7 / 5, (ah - (LAYERS_MAX - 1) * DY) / SCHEMA.rowsMax), 26, 84);
   return { w: th * 5 / 7, h: th };
 }
@@ -74,6 +75,7 @@ export function createBoardView(gridEl, areaEl) {
       let maxLayer = 0;
       for (const t of tiles) if (t.layer > maxLayer) maxLayer = t.layer;
       const stackSpread = maxLayer * DY; // tallest stack rises above row 0
+      SPREAD = stackSpread; // remembered for flight start poses (row 0 baseline shift)
       gridEl.style.setProperty('--tw', TW + 'px');
       gridEl.style.setProperty('--th', TH + 'px');
       gridEl.style.width = cols * TW + 'px';
@@ -84,7 +86,7 @@ export function createBoardView(gridEl, areaEl) {
         const el = els.get(t.id);
         if (!el) continue;
         el.style.setProperty('--tx', t.col * TW + 'px');
-        el.style.setProperty('--ty', t.row * TH - t.layer * DY + 'px');
+        el.style.setProperty('--ty', t.row * TH - t.layer * DY + stackSpread + 'px');
         el.style.setProperty('--z', 100 + t.layer * 10);
       }
     },
@@ -173,7 +175,7 @@ export function createBoardView(gridEl, areaEl) {
     flyToBank(el, t, slotEl, onLanded) {
       const fx = document.getElementById('fx');
       const sx = areaEl.offsetLeft + gridEl.offsetLeft + t.col * TW;
-      const sy = areaEl.offsetTop + gridEl.offsetTop + t.row * TH - t.layer * DY;
+      const sy = areaEl.offsetTop + gridEl.offsetTop + SPREAD + t.row * TH - t.layer * DY;
       const dx = slotEl.offsetLeft + (slotEl.offsetWidth - TW) / 2 - sx;
       const dyv = slotEl.offsetTop + (slotEl.offsetHeight - TH) / 2 - sy;
       // reparent into the fx layer (stage-space coords)

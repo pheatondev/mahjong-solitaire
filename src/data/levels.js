@@ -4,10 +4,10 @@
    console-warns + skips invalid ones in dev (§7.1). */
 
 export const SCHEMA = {
-  colsMin: 8,
-  colsMax: 8, // unlocked v0.3.3: uniform tile size — T = availW/8 (≈47.5 design px) for EVERY level (§14.2)
-  rowsMin: 6,
-  rowsMax: 12,
+  colsMin: 5,
+  colsMax: 5, // locked v0.3.5: board is exactly 5 columns — T = availW/5 pairs with the §14.2 portrait fit; uniform size survive (§14.2)
+  rowsMin: 4,
+  rowsMax: 8,
 };
 
 function tileCountOf(layers) {
@@ -41,7 +41,7 @@ function validateLevel(l) {
     });
   });
 
-  // §7.1 board rectangle bounds (cols locked 8–14, rows 6–12)
+  // §7.1 board rectangle bounds (v0.3.5: cols locked 5–5, rows 4–8)
   if (cols < SCHEMA.colsMin || cols > SCHEMA.colsMax) {
     at(`level ${l.id}: cols=${cols} outside ${SCHEMA.colsMin}–${SCHEMA.colsMax} (locked)`);
   }
