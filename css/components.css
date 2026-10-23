@@ -21,7 +21,7 @@
 }
 #chip.on { visibility: visible; }
 #hud-right { display: flex; align-items: center; gap: 10px; }
-#stars { font-size: 15px; letter-spacing: 1px; color: var(--ink); opacity: .9; }
+#stars { font-size: 15px; letter-spacing: 1px; color: #d9c8d2; opacity: .9; }
 #stars .lit { color: #f7b32b; }
 #score {
   font-size: 20px;
