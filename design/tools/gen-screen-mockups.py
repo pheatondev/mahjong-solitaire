@@ -279,7 +279,7 @@ def win_card():
             inner.append(f'<text x="{143+i*52}" y="{cy+106}" text-anchor="middle" font-size="40" fill="#d9c7c0" opacity="0.6">★</text>')
     inner.append(f'<text x="195" y="{cy+150}" font-size="27" font-weight="900" fill="{ACCENT}" text-anchor="middle">12,850</text>')
     inner.append(f'<text x="195" y="{cy+172}" font-size="12" font-weight="700" fill="#59c96f" text-anchor="middle">🎉 New best score!</text>')
-    for i, (t, prim) in enumerate([('▶ Next Level', True), ('↻ Replay', False), ('🗺 Level map', False)]):
+    for i, (t, prim) in enumerate([('▶ Next Level', True), ('↻ Replay', False), ('🗺 Levels', False)]):
         inner.append(btn(cx + 20, cy + 188 + i * 62, 240, 54, t, prim, 16))
     return f'<rect x="{cx}" y="{cy}" width="{cw}" height="{188 + 3*62 - 6}" rx="24" fill="#fffdf7" filter="url(#cs)"/>' + ''.join(inner)
 
@@ -300,7 +300,7 @@ def fail_card():
              f'<text x="195" y="{cy+58}" font-size="12" font-weight="600" fill="#9b7488" text-anchor="middle">Four different candies, no pair — attempt ends.</text>']
     for i, k in enumerate(fail_tiles):
         inner.append(minitile(k, 195 - 94 + i * 49, cy + 80, 40))
-    for i, (t, prim) in enumerate([('↻ Restart — fresh deal', True), ('🗺 Level map', False)]):
+    for i, (t, prim) in enumerate([('↻ Restart — fresh deal', True), ('🗺 Levels', False)]):
         inner.append(btn(cx + 20, cy + 132 + i * 62, 240, 54, t, prim, 15))
     return f'<rect x="{cx}" y="{cy}" width="{cw}" height="{132 + 2*62 - 8}" rx="24" fill="#fffdf7" filter="url(#cs)"/>' + ''.join(inner)
 
@@ -313,7 +313,7 @@ def noprog_card():
     cx, cy, cw = 55, 216, 280
     inner = [f'<text x="195" y="{cy+36}" font-size="21" font-weight="800" fill="{INK}" text-anchor="middle">No moves in sight 🍬</text>',
              f'<text x="195" y="{cy+58}" font-size="12" font-weight="600" fill="#9b7488" text-anchor="middle">Reshuffle the board, or take a step back?</text>']
-    for i, (t, prim) in enumerate([('🔄 Shuffle', True), ('↩ Undo last bank', False), ('↻ Restart level', False), ('🗺 Level map', False)]):
+    for i, (t, prim) in enumerate([('🔄 Shuffle', True), ('↩ Undo last bank', False), ('↻ Restart level', False), ('🗺 Levels', False)]):
         inner.append(btn(cx + 20, cy + 82 + i * 62, 240, 54, t, prim, 15))
     return f'<rect x="{cx}" y="{cy}" width="{cw}" height="{82 + 4*62 - 8}" rx="24" fill="#fffdf7" filter="url(#cs)"/>' + ''.join(inner)
 
@@ -325,7 +325,7 @@ def pause_card():
     cx, cy, cw = 55, 216, 280
     inner = [f'<text x="195" y="{cy+36}" font-size="21" font-weight="800" fill="{INK}" text-anchor="middle">Paused ⏸</text>',
              f'<text x="195" y="{cy+58}" font-size="12" font-weight="600" fill="#9b7488" text-anchor="middle">Melon · Level 12</text>']
-    for i, (t, prim) in enumerate([('▶ Resume', True), ('↻ Restart', False), ('⚙️ Settings', False), ('🗺 Level map', False)]):
+    for i, (t, prim) in enumerate([('▶ Resume', True), ('↻ Restart', False), ('⚙️ Settings', False), ('🗺 Levels', False)]):
         inner.append(btn(cx + 20, cy + 82 + i * 62, 240, 54, t, prim, 16))
     return f'<rect x="{cx}" y="{cy}" width="{cw}" height="{82 + 4*62 - 8}" rx="24" fill="#fffdf7" filter="url(#cs)"/>' + ''.join(inner)
 
@@ -410,7 +410,7 @@ def toggle(x, y, on, inert=False):
     kx = x + 46 - 13.5 if (on and not inert) else x + 13.5
     extra = ' opacity="0.65"' if inert else ''
     return (f'<rect x="{x}" y="{y}" width="46" height="27" rx="13.5" fill="{track}"{extra}/>'
-            f'<circle cx="{kx}" cy="{y+13.5}" r="11" fill="#ffffff" opacit' + 'y="1"' + (' opacity="0.9"' if inert else '') + '/>')
+            f'<circle cx="{kx}" cy="{y + 13.5}" r="11" fill="#ffffff" opacity="{0.9 if inert else 1}"/>')
 
 
 def stats():
@@ -473,7 +473,8 @@ def settings():
 OUT['settings'] = svg_doc('Settings', settings())
 
 # ---------- write files ----------
-OUTDIR = r'C:\R\OpenCode Projects\MahjongLite\design\screens'
+from pathlib import Path
+OUTDIR = str(Path(__file__).resolve().parents[1] / 'screens')
 os.makedirs(OUTDIR, exist_ok=True)
 for name, content in OUT.items():
     with open(os.path.join(OUTDIR, name + '.svg'), 'w', encoding='utf-8') as f:

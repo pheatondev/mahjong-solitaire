@@ -17,9 +17,9 @@ export const STR = {
 
   // §5 boosters (M2)
   mapBtn: '🗺', undoBtn: '↩', shuffleBtn: '🔄', hintBtn: '💡',
-  mapBtnAria: 'Level map', undoBtnAria: 'Undo', shuffleBtnAria: 'Shuffle', hintBtnAria: 'Hint',
+  mapBtnAria: 'Levels', undoBtnAria: 'Undo', shuffleBtnAria: 'Shuffle', hintBtnAria: 'Hint',
   next: (n) => `Next · L${n}`,
-  map: '🗺 Map',
+  map: '🗺 Levels',
 
   // §5.1 hint ladder
   noPairsToast: 'No pairs in sight 🍬 — bank any free tile or Undo',
@@ -30,7 +30,7 @@ export const STR = {
   dlgShuffle: '🔄 Shuffle',
   dlgUndo: '↩ Undo last bank',
   dlgRestart: '↻ Restart level',
-  dlgMap: '🗺 Level map',
+  dlgMap: '🗺 Levels',
 
   // §13 storage-failure toast (one-time, non-blocking)
   saveToast: "Progress won't be saved in this browser mode 🍪",
@@ -59,7 +59,7 @@ export const STR = {
   resume: '▶ Resume',
   pRestart: '↻ Restart',
   pSettings: '⚙️ Settings',
-  pMap: '🗺 Level map',
+  pMap: '🗺 Levels',
 
   // §3.6 fail overlay copy
   failBody: 'Four different candies, no pair — attempt ends.',

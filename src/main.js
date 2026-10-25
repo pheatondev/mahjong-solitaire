@@ -170,8 +170,8 @@ function goSettingsBack() {
 function goMap() {
   closePause({ silent: true });
   closeDialog();
-  // the win/fail cards' Map button leaves the card context: dismiss both overlays
-  // (they are only hidden by startLevel otherwise — Map used to leave the card
+  // the win/fail cards' Levels button leaves the card context: dismiss both overlays
+  // (they are only hidden by startLevel otherwise — Levels used to leave the card
   //  open above the levels screen)
   hideOverlay(els.win);
   hideOverlay(els.fail);
