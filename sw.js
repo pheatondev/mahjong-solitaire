@@ -7,7 +7,7 @@
      cache-name bump (VERSION below): the new deploy misses, repopulates, and activate
      deletes the old-named cache. Players get the new version on their next visit. */
 
-const VERSION = 'v1.0.5'; // v0.3.8: bank left-pack glide + ivory bloom sky
+const VERSION = 'v1.0.6'; // v0.3.9: SFX master ×1.4
 const CACHE = `mahjonglite-${VERSION}`;
 
 /* Every file the shell needs — anything not listed here is simply never cached. */

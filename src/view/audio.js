@@ -9,6 +9,11 @@ export function createAudio(getSfxOn) {
   let ctx = null;
   let master = null;
 
+  /** v0.3.9 user ruling: everything plays ×1.4 through the master bus — uniform,
+   *  so the tuned relative mix (pop vs bell vs thock) is preserved. Far below the
+   *  clip ceiling even when recipes stack (win arpeggio peaks ≈ 0.28). */
+  const SFX_LEVEL = 1.4;
+
   /** Create/resume the context + master bus. Returns null silently if unsupported. */
   function ensure() {
     if (!ctx) {
@@ -16,7 +21,7 @@ export function createAudio(getSfxOn) {
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = getSfxOn() ? 1 : 0;
+      master.gain.value = getSfxOn() ? SFX_LEVEL : 0;
       master.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume().catch(() => { /* autoplay-blocked; unlock() will retry on a real gesture */ });
@@ -25,7 +30,7 @@ export function createAudio(getSfxOn) {
 
   /** Live mute flip when settings change (§13 write trigger via setSetting). */
   function applyMute() {
-    if (master) master.gain.setTargetAtTime(getSfxOn() ? 1 : 0, ctx?.currentTime ?? 0, 0.01);
+    if (master) master.gain.setTargetAtTime(getSfxOn() ? SFX_LEVEL : 0, ctx?.currentTime ?? 0, 0.01);
   }
 
   /** One oscillator voice with optional gain envelope + sweep + pre-gain filter. */
