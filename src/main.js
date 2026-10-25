@@ -32,7 +32,7 @@ const $ = (s) => document.querySelector(s);
 const els = {
   safe: $('#safe'), stage: $('#stage'), scrLevels: $('#scr-levels'), scrGame: $('#scr-game'),
   scrHome: $('#scr-home'), scrStats: $('#scr-stats'), scrSettings: $('#scr-settings'),
-  fx: $('#fx'),
+  fx: $('#fx'), splash: $('#splash'),
   lvlScroll: $('#lvl-scroll'), lvlTitle: $('#lvl-title'),
   bank: $('#bank'), board: $('#board'), grid: $('#grid'),
   chip: $('#chip'), score: $('#score'), stars: $('#stars'), combo: $('#combo'),
@@ -209,6 +209,34 @@ function hideOverlay(dlg) { // call whenever the topmost dialog fades out
 }
 
 /* ---------- boot ---------- */
+const splashAt = performance.now(); // v0.3.6: min-hold clock starts when the JS runs
+
+/** v0.3.6 boot splash: fades once Home is live; the min 600 ms hold keeps it from
+ *  blipping past on warm/cached loads (§8.3/§9.3). Reduced-motion rounds to instant
+ *  via base.css + the in-game toggle. */
+function hideSplash() {
+  const splash = els.splash;
+  if (!splash || splash.dataset.gone) return;
+  splash.dataset.gone = '1';
+  const hold = Math.max(0, 600 - (performance.now() - splashAt));
+  setTimeout(() => {
+    splash.classList.add('gone');
+    setTimeout(() => splash.remove(), 480); // after the 400 ms fade (inline CSS)
+  }, hold);
+}
+
+/** v0.3.6: a failed boot never strands a blank app — the splash stays up with an
+ *  error line and the pulsing dot stops. */
+function splashError(err) {
+  const splash = els.splash;
+  console.error('boot failed', err);
+  if (!splash) return;
+  splash.classList.add('blank');
+  splash.querySelector('.splash-dot')?.setAttribute('style', 'animation:none');
+  const msg = splash.querySelector('.splash-err');
+  if (msg) msg.textContent = 'Something went stale 🍪 — try a reload.';
+}
+
 async function boot() {
   setBrokenToastHandler(() => showToast(STR.saveToast)); // §13 one-time toast — before initStore
   initStore();
@@ -260,6 +288,7 @@ async function boot() {
   renderLevelSelect();
   showScreen('home'); // M3: boot lands on Home; Play = the frontier level
   homeScr.show();
+  hideSplash(); // v0.3.6: all loading + initialisation done → fade to Home
 
   // §15 PWA: register the dumb-precache worker. URL is derived from this module's own
   // location (not the document) so it stays correct under the Pages subpath (§2.1).
@@ -269,7 +298,7 @@ async function boot() {
     });
   }
 }
-boot();
+boot().catch(splashError); // v0.3.6: boot failure keeps the splash (with an error line)
 
 /* ---------- §9.2 landscape-phone hint (never blocking, once per session) ---------- */
 let landscapeHinted = false;

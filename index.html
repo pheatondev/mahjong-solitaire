@@ -12,6 +12,42 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#ff5d8f">
   <title>Mahjong Lite</title>
+  <!-- v0.3.6 boot splash: static HTML + inline CSS, painted BEFORE every external
+       stylesheet/module so it is guaranteed the first paint on any load. It covers
+       the whole window until main.js fades it (min 600 ms hold, §8.3/§9.3) — a
+       fetch failure leaves it up with an error line instead of a blank app. -->
+  <style>
+    #splash {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+      background: linear-gradient(180deg, #ffd9e8, #ffadc6); /* bubblegum tokens (§10.2), pre-theme */
+      font-family: -apple-system, "SF Pro Rounded", ui-rounded, "Segoe UI", Roboto, system-ui, sans-serif;
+      transition: opacity 400ms ease;
+    }
+    #splash.gone { opacity: 0; pointer-events: none; }
+    #splash .splash-mark {
+      font-size: 46px; line-height: 0.95; font-weight: 900;
+      text-align: center; letter-spacing: 0.5px;
+      color: #ff5d8f;
+      -webkit-text-stroke: 1.6px #fffdf7;
+      paint-order: stroke fill;
+      text-shadow: 0 4px 0 rgba(74, 43, 58, 0.14);
+    }
+    #splash .splash-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #ff5d8f;
+      animation: splash-pulse 1s ease-in-out infinite;
+    }
+    #splash .splash-err { display: none; }
+    #splash.blank .splash-err { display: block; max-width: 300px; text-align: center; font-size: 16px; color: #4a2b3a; }
+    @keyframes splash-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50%      { transform: scale(1.35); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { #splash .splash-dot { animation: none; } }
+    body.reduce-motion #splash .splash-dot { animation: none !important; }
+    body.reduce-motion #splash { transition-duration: 0.01ms !important; }
+  </style>
   <!-- PWA (§15): relative URLs only — Pages deploys under a subpath (§2.1). -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
@@ -22,6 +58,13 @@
   <link rel="stylesheet" href="css/anim.css">
 </head>
 <body data-theme="bubblegum">
+  <!-- v0.3.6 boot splash — first child of body, removed by main.js once Home is live -->
+  <div id="splash" role="status" aria-label="Loading">
+    <div class="splash-mark">Mahjong<br>Smoosh</div>
+    <div class="splash-dot" aria-hidden="true"></div>
+    <p class="splash-err"></p>
+  </div>
+
   <div id="bg" aria-hidden="true"></div>
 
   <!-- §9.1 (v0.3.2) safe-area frame: insets via env() in CSS; #stage centers inside.
@@ -41,7 +84,7 @@
       <p id="lvl-hint"></p>
     </section>
 
-    <section id="scr-game" class="screen" aria-label="Game">
+    <section id="scr-game" class="screen hidden" aria-label="Game">
     <header id="hud">
       <button id="btn-pause" class="hbtn" aria-label="Pause">‖</button>
       <span id="chip">Melon · L1</span>

@@ -24,6 +24,7 @@
 - Deal RNG is deterministic mulberry32, seed = `levelId × 7919 + reDealCounter`; counter bumps on Restart and Shuffle (GDD §14.4).
 - **No JS rapid-tap guard** — fast second tap is valid input (peek→bank); zoom prevention is CSS/viewport-level only (GDD §16).
 - **Tab-hide opens no pause UI** — the rAF clock just freezes (GDD §16).
+- **Boot splash paints first** (v0.3.6): the self-contained cover in `index.html` (inline CSS, no script) fades only when `main.js` finishes loading data + Home; min 600 ms hold; boot failure keeps it with an error line. No splash at level entry — shimmer only (GDD §8.3).
 - Service worker = "dumb precache": cache-first, no `skipWaiting`/`clientsClaim`/update toast; releases bump the cache name only, and bare directory-path navigations must serve cached `index.html` (GDD §15).
 - Persistence: single `localStorage` key `mahjonglite:v1`; never mirror to IndexedDB; in-memory fallback + toast on storage failure (GDD §13).
 - All UI strings live in one `src/data/i18n.js` map (GDD §14.4).
