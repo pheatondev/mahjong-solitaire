@@ -12,9 +12,9 @@ import { faceName } from '../data/i18n.js';
  *  lower tile's baked-in bottom edge peeks out — stacks read at a glance. */
 const DY = 7;
 
-/** Per-slot in-flight registry (slotEl → flight, v0.3.7): the bank view's
-    state-first reconcile consults it so a landing never clobbers the pending
-    mini a still-flying tile will need. Shared by the board and bank views. */
+/** v0.3.8: in-flight registry (face → flight). Pending minis are face-keyed, so
+    the bank reconcile consults this (not slot indices) to spare them; removed on
+    every landing/cancel. Shared by the board and bank views. */
 const slotFlights = new Map();
 let SPREAD = 0; // row-0 baseline shift (headroom for the tallest stack), set by fit()
 
@@ -210,13 +210,13 @@ export function createBoardView(gridEl, areaEl) {
         if (landed) return;
         landed = true;
         flights.delete(f);
-        slotFlights.delete(slotEl);
+        slotFlights.delete(t.face);
         // pop/serve logic resolves at landing (§3.3 tap-order ledger)
         onLanded();
         el.remove();
       };
-      const f = { cancel: () => { landed = true; slotFlights.delete(slotEl); el.remove(); } };
-      slotFlights.set(slotEl, f); // v0.3.7: the bank reconcile spares in-flight slots
+      const f = { cancel: () => { landed = true; slotFlights.delete(t.face); el.remove(); } };
+      slotFlights.set(t.face, f); // v0.3.8: the bank reconcile spares in-flight faces
       flights.add(f);
       el.addEventListener('transitionend', land, { once: true });
       setTimeout(land, 380); // ≥ the 350 ms flight budget (§16)
@@ -227,99 +227,156 @@ export function createBoardView(gridEl, areaEl) {
     cancelFlights() {
       for (const f of flights) f.cancel();
       flights.clear();
+      slotFlights.clear();
       const fx = document.getElementById('fx');
       fx.querySelectorAll('.tile.flight').forEach((el) => el.remove());
     },
   };
 }
 
-/** Bank ("tin") view: mini tiles, landing reveal, auto-pop, pre-seal warning tint (§9.5). */
+/** Bank ("tin") view v0.3.8 — face-keyed minis live directly in #bank, absolutely
+ *  positioned and gliding between the packed slots (left-pack ruling: no banked
+ *  tile keeps an empty slot to its left). Faces are unique in the bank at all
+ *  times (identical twins auto-pop instantly), so the face is the mini's identity:
+ *  reconcile can never clobber a flying tile's mini, and slot indices are pure
+ *  presentation. Landing reveal, auto-pop, pre-seal warning tint (§9.5). */
 export function createBankView(bankEl) {
-  const slots = [...bankEl.querySelectorAll('.slot')]; // only real slots — stray children must never shift slot indices
-  const mini = (face) => {
+  const slots = [...bankEl.querySelectorAll('.slot')]; // physical slot frames
+  const minis = new Map(); // face → [el] (usually 1; a popping pair is 2 transiently)
+  const poppingSoon = new Set(); // faces whose pop is resolved but lands later — reconcile spares them
+
+  /** Slot geometry is read lazily and per use — at module-eval time #scr-game is
+   *  still hidden (v0.3.6 boot splash), so every offset would be 0. All values
+   *  are in the slots' offsetParent space (= #scr-game/stage coords). */
+  const geo = () => {
+    const s0 = slots[0];
+    const bw = parseFloat(getComputedStyle(s0).borderLeftWidth); // 2.5
+    return {
+      baseX: s0.offsetLeft + bw,
+      baseY: bankEl.offsetTop + (bankEl.clientHeight - s0.clientHeight) / 2,
+      stride: slots[1].offsetLeft - s0.offsetLeft, // 69
+      w: s0.clientWidth, h: s0.clientHeight, // 52 × 73 = the tile cell
+    };
+  };
+
+  const make = (face, i, pending) => {
+    const g = geo();
     const m = document.createElement('div');
-    m.className = `mini`;
-    m.dataset.face = face; // v0.3.7: the reconcile matches minis to state by face
+    m.className = pending ? 'mini pending' : 'mini landed';
+    m.dataset.face = face;
     m.innerHTML = imgFace(face);
-    m.classList.add('pending'); // invisible until its flight lands
+    m.style.left = g.baseX + 'px';
+    m.style.top = g.baseY + 'px';
+    m.style.width = g.w + 'px';
+    m.style.height = g.h + 'px';
+    m.style.translate = `${i * g.stride}px 0`;
+    minis.set(face, [...(minis.get(face) ?? []), m]);
+    bankEl.appendChild(m);
     return m;
   };
+  const one = (face) => (minis.get(face) ?? [])[0] ?? null;
+  const each = (face, fn) => { for (const m of minis.get(face) ?? []) fn(m); };
+  const drop = (face, el) => {
+    const rest = (minis.get(face) ?? []).filter((x) => x !== el);
+    if (rest.length) minis.set(face, rest); else minis.delete(face);
+  };
+  const firstFree = (bankFaces) => bankFaces.findIndex((f) => !f);
+  const homeOf = (i) => { const g = geo(); return `${i * g.stride}px 0`; };
 
   return {
     slotEls: slots,
 
-    /** Create the pending mini for a banked tile. */
-    bank(slot, face) {
-      slots[slot].querySelectorAll('.mini').forEach((m) => m.remove());
-      slots[slot].appendChild(mini(face));
+    /** Create the pending mini for a banked tile at its (post-pack) slot. */
+    bank(face, i) {
+      make(face, i, true);
     },
 
     /** Reveal the mini once its flight touches down (§3.3). */
-    land(slot) {
-      const m = slots[slot]?.querySelector('.mini.pending');
+    land(face) {
+      const m = (minis.get(face) ?? []).find((x) => x.classList.contains('pending'));
       if (m) { m.classList.remove('pending'); m.classList.add('landed'); }
     },
 
-    /** Auto-pop both pair slots (§9.5): pop animations, then clear. */
-    popSlots(a, b) {
-      for (const s of [a, b]) {
-        const m = slots[s]?.querySelector('.mini');
-        if (!m) continue;
+    /** A pop resolved in state at tap time; its pair minis hold until touchdown. */
+    holdPop(face) { poppingSoon.add(face); },
+
+    /** Pop the pair out of the tin (§9.5): pop animation, then removal. */
+    pop(face) {
+      poppingSoon.delete(face);
+      each(face, (m) => {
         m.classList.remove('landed', 'pending');
         m.classList.add('popping');
-        setTimeout(() => m.remove(), 280);
-      }
+        setTimeout(() => { m.remove(); }, 280);
+      });
+      minis.delete(face);
     },
 
-    /** Clear the slot (e.g. fresh deal). */
-    clearAll() {
-      slots.forEach((s) => s.querySelectorAll('.mini').forEach((m) => m.remove()));
-      slots.forEach((s) => s.classList.remove('warn'));
-    },
-
-    /** Resync the tin from state (§5.4 undo / §5.2 shuffle keep bank contents; undo
-     *  restores a previous arrangement). All minis land instantly, no flights. */
-    syncBank(bankFaces) {
-      slots.forEach((s) => s.querySelectorAll('.mini').forEach((m) => m.remove()));
-      slots.forEach((s) => s.classList.remove('warn'));
+    /** v0.3.8 staggered left-pack glide: every mini eases to its state index as the
+     *  popped pair bursts out. Order = left-first scan; per-tile 60 ms cascade. */
+    slide(bankFaces, stagger = 0) {
+      let moved = 0;
       bankFaces.forEach((face, i) => {
         if (!face) return;
-        const m = mini(face);
-        m.classList.remove('pending');
-        m.classList.add('landed');
-        slots[i].appendChild(m);
+        face = String(face);
+        const el = one(face);
+        if (!el) return;
+        const target = homeOf(i);
+        if (el.style.translate === target) return; // already home
+        el.style.transitionDelay = `${moved * stagger}ms`;
+        moved += 1;
+        el.style.translate = target;
+        el.addEventListener('transitionend', () => (el.style.transitionDelay = ''), { once: true });
+      });
+      return moved;
+    },
+
+    /** Clear the tin (e.g. fresh deal). */
+    clearAll() {
+      minis.forEach((els) => els.forEach((m) => m.remove()));
+      minis.clear();
+      poppingSoon.clear();
+      slots.forEach((s) => s.classList.remove('warn'));
+    },
+
+    /** Resync the tin from state (§5.4 undo / §5.2 shuffle keep bank contents). */
+    syncBank(bankFaces) {
+      slots.forEach((s) => s.classList.remove('warn'));
+      for (const [, els] of minis) els.forEach((m) => m.remove());
+      minis.clear();
+      poppingSoon.clear();
+      bankFaces.forEach((face, i) => {
+        if (face) make(String(face), i, false);
       });
     },
 
-    /** v0.3.7 state-first reconcile (fixes banked-tile-goes-invisible): the tin DOM
+    /** v0.3.8 state-first reconcile (fixes banked-tile-goes-invisible): the tin DOM
      *  is only ever a projection of `state.bank`, re-asserted on every landing/tap.
-     *  Slots with an in-air flight keep their pending mini (its own landing resolves
-     *  them); anything else that disagrees with state (missing, wrong face, orphaned
-     *  pending, stale extra) is corrected here, so a banked tile can never be
-     *  permanently missing from the tin. */
+     *  A pending mini whose face is in state is preserved (its own flight reveals
+     *  it; slotFlights distinguishes an orphaned one — flight gone, never revealed —
+     *  and promotes it to landed). Faces absent from state vanish unless their pop
+     *  is still scheduled; state faces with no mini are rebuilt. */
     reconcile(bankFaces) {
-      for (let i = 0; i < slots.length; i++) {
-        const want = bankFaces[i] ?? null;
-        const cur = slots[i].querySelector('.mini');
-        const flying = slotFlights.has(slots[i]);
-        if (want) {
-          const correct = cur && cur.dataset.face === want;
-          if (!cur || (!correct && !cur.classList.contains('popping'))) {
-            cur?.remove(); // missing or wrong face (not mid-pop) → rebuild from state
-            const m = mini(want);
-            m.classList.remove('pending');
-            m.classList.add('landed');
-            slots[i].appendChild(m);
-          } else if (correct && !flying && cur.classList.contains('pending')) {
-            // orphaned pending: its flight is gone but never revealed → self-heal
-            cur.classList.remove('pending');
-            cur.classList.add('landed');
+      for (const [face, els] of [...minis]) {
+        if (poppingSoon.has(face)) continue;
+        let i = bankFaces.indexOf(face);
+        if (i === -1) {
+          els.forEach((m) => m.remove());
+          minis.delete(face);
+          continue;
+        }
+        for (const m of els) {
+          if (m.classList.contains('pending')) {
+            if (!slotFlights.has(face)) { m.classList.remove('pending'); m.classList.add('landed'); }
+            else m.style.translate = homeOf(i); // invisible pending rides along
+          } else if (m.style.translate !== homeOf(i)) {
+            m.style.translate = homeOf(i);
+            m.addEventListener('transitionend', () => (m.style.transitionDelay = ''), { once: true });
           }
-          // correct landed mini or an in-flight correct pending → landing resolves it
-        } else if (cur && !cur.classList.contains('popping')) {
-          cur.remove(); // stale mini for a slot the state says is empty
         }
       }
+      bankFaces.forEach((face, i) => {
+        if (face && !minis.has(String(face))) make(String(face), i, false); // self-heal
+      });
     },
 
     /** Pre-seal telegraph (§3.6/§9.5): when 3 DISTINCT faces are banked, the open
@@ -327,10 +384,12 @@ export function createBankView(bankEl) {
     warnStale(bankFaces) {
       const occupied = bankFaces.filter((f) => f);
       const distinct = new Set(occupied).size;
-      const open = bankFaces.findIndex((f) => !f);
+      const open = firstFree(bankFaces);
       slots.forEach((s) => s.classList.remove('warn'));
       if (occupied.length === 3 && distinct === 3 && open !== -1) slots[open].classList.add('warn');
-
     },
+
+    /** The (first) mini of a banked face — for hint pulses (§5.1). */
+    miniEl(face) { return one(String(face)); },
   };
 }

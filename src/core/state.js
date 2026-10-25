@@ -61,6 +61,13 @@ export function bankTile(st, tile, now) {
     st.comboUntil = now + COMBO_WINDOW_MS;
     st.score += matchScore(st.comboN);
     res.popped = twinSlot < slot ? [twinSlot, slot] : [slot, twinSlot];
+    // v0.3.8: left-pack immediately — no banked tile keeps an empty slot to its
+    // left (user ruling). Order is meaningless to the rules; the tin view slides
+    // minis to match (§9.5 v0.3.8). Snapshots taken at tap time are hence always
+    // gapless, so undo round-trips stay consistent for free.
+    const keep = st.bank.filter(Boolean);
+    while (keep.length < BANK_CAP) keep.push(null);
+    st.bank = keep;
   } else if (st.bank.every((t) => t)) {
     // 4 distinct faces, no pair → the tin has sealed (§3.6): terminal at tap time.
     res.sealed = true;

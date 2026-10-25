@@ -54,6 +54,25 @@ body {
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
 }
 
+/* v0.3.8 "ivory bloom": one huge soft white glow drifts diagonally and breathes
+   over the static sky (~14 s per leg, transform/opacity only — no per-frame
+   repaint). Sits UNDER the sprinkles/clouds in perception but ABOVE in z-order
+   via ::after stacking (both are pointerless decoration). Freezes to the static
+   sky under prefers-reduced-motion (base.css) and the in-game toggle. */
+#bg::after {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  background: radial-gradient(48% 36% at 46% 40%, rgba(255, 247, 250, 0.62), rgba(255, 247, 250, 0) 70%);
+  animation: bg-bloom 14s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+@keyframes bg-bloom {
+  from { transform: translate(-5%, -7%) scale(1); opacity: 0.85; }
+  to   { transform: translate(5%, 9%) scale(1.24); opacity: 1; }
+}
+body.reduce-motion #bg::after { animation: none !important; }
+
 /* §9.1 (v0.3.2) safe-area frame — the stage centers inside the mobile safe zone.
    The 6px top minimum answers user feedback ("top UI must sit below the notch");
    env() insets are 0 in a plain browser tab, so cost there is only the 6/2px margin. */

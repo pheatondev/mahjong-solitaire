@@ -478,7 +478,8 @@ function doBank(tile, el) {
   }
 
   el.classList.remove('peeked'); // peeked tiles fly face-up (flip plays during flight, §3.5)
-  bank.bank(res.slot, tile.face);
+  if (res.popped) bank.holdPop(tile.face); // v0.3.8: the pair's minis hold until the pop lands
+  bank.bank(tile.face, res.slot);
   bank.warnStale(state.bank.map((b) => b?.face));
   refreshBoard();
 
@@ -487,17 +488,19 @@ function doBank(tile, el) {
   checkNoProgress(); // §5.3 strict trigger, at logical tap time
 }
 
-/** Flight touchdown: landing reveals, auto-pop presentation, fail/win overlays. */
-function onLanded(res, _tile, comboAtTap = 1) {
+/** Flight touchdown: landing reveals, auto-pop presentation, left-pack glide,
+ *  fail/win overlays. */
+function onLanded(res, tile, comboAtTap = 1) {
   if (res.popped) {
-    bank.popSlots(res.popped[0], res.popped[1]);
+    bank.pop(tile.face); // both pair minis burst out of the tin (§9.5)
     audio.match(comboAtTap); // §12.1: the pop sound fires AT LANDING, ladder-capped
     for (const s of res.popped) { // candy burst per freed slot (stage-px coords, §16)
       const slotEl = bank.slotEls[s];
       fxr.burst(slotEl.offsetLeft + slotEl.offsetWidth / 2, slotEl.offsetTop + slotEl.offsetHeight / 2, { n: 10 });
     }
+    bank.slide(state.bank.map((b) => b?.face), 60); // v0.3.8: staggered left-pack glide
   } else {
-    bank.land(res.slot);
+    bank.land(tile.face);
     audio.land(); // §12.1 soft "thock"
   }
   bank.reconcile(state.bank.map((b) => b?.face)); // v0.3.7: tin = state-truth, self-healing
@@ -651,9 +654,10 @@ function doShuffle() {
 
 /* ---------- §5.1 Hint (greedy scan — the solver never runs in gameplay, locked) ---------- */
 function pulseTarget(t) {
-  const slot = state.bank.indexOf(t); // banked twin → pulse its tin slot mini
+  const slot = state.bank.indexOf(t); // banked twin → pulse its tin mini (face-keyed, v0.3.8)
   if (slot !== -1) {
-    view.pulse(bank.slotEls[slot].querySelector('.mini'));
+    const mini = bank.miniEl(t.face);
+    if (mini) view.pulse(mini);
     return;
   }
   view.pulse(view.tileEl(t.id));
