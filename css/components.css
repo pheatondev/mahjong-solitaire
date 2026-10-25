@@ -184,11 +184,12 @@ body.reduce-motion .mini { transition: none !important; }
 .overlay {
   position: fixed; /* body-level: covers the entire window, not just the stage */
   inset: 0;
-  /* iOS 26 (§15 known-quirk): fixed inset:0 layers can stop short of the screen
-     bottom in standalone/home-screen mode — viewport units still resolve, so the
-     layer carries its own height too (bottom ignored when over-constrained). */
-  height: 100vh;
-  height: 100lvh;
+  /* iOS 26 (§15): translucent fixed scrims paint short of the screen bottom by
+     ~1 safe-area inset on 26.6 (v0.3.11's 100lvh height did NOT cover it — the
+     clamp is on translucent composited layers, opaque ones like #bg are fine).
+     Auto-height + symmetric negative margins stretch the box past both edges;
+     margins dodge the over-constrained geometry that ignores bottom+height. */
+  margin: calc(-1 * (max(env(safe-area-inset-bottom, 0px), 16px) + 8px)) 0;
   display: none;
   align-items: center;
   justify-content: center;
