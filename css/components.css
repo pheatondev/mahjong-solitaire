@@ -3,12 +3,12 @@
 
 /* ---------- HUD row (≤56px: chip · stars · score) ---------- */
 #hud {
-  height: 52px;
+  height: 48px; /* v0.3.7: 52→48 — the 80px portrait tin consumes the space; board keeps th 72.75 */
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: max(8px, env(safe-area-inset-top, 0px) * 1) 12px 0 12px;
+  padding: max(4px, env(safe-area-inset-top, 0px) * 1) 12px 0 12px;
 }
 #chip {
   font-size: 14px;
@@ -46,10 +46,14 @@
 }
 #combo.show { animation: combo-pop 1.6s ease-out forwards; }
 
-/* ---------- bank strip (4-slot tin, top HUD zone §3.3/§9.4) ---------- */
+/* ---------- bank strip (4-slot tin, top HUD zone §3.3/§9.4/§9.5 v0.3.7) ---------- */
+/* v0.3.7 portrait tin: slots are 5:7 like the tiles — slot content box = the exact
+   board-tile cell (51.96 × 72.75 ≈ 52×73), so minis fill edge-to-edge 1:1. The strip
+   grew 70→80 px, which consumes the board's 10 px fit slack exactly: board ≥ 624 px
+   keeps the fit width-bound and tiles stay 72.75 px tall — do not grow it further. */
 #bank {
   flex: none;
-  height: 70px;
+  height: 80px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -57,14 +61,14 @@
 }
 .slot {
   position: relative;
-  width: 54px;
-  height: 54px;
+  width: 57px;
+  height: 78px; /* + 2.5px dashed border → 52×73 content box */
   border: 2.5px dashed rgba(255, 253, 247, 0.85);
   border-radius: 14px;
   background: rgba(255, 253, 247, 0.25);
 }
 .slot .mini { opacity: 0; } /* tile appears when its flight lands */
-.slot .mini.landed { opacity: 1; animation: mini-land 200ms ease-out forwards; } /* settled 78% (§9.5) */
+.slot .mini.landed { opacity: 1; animation: mini-land 200ms ease-out forwards; } /* settles filled (100%, §9.5 v0.3.7) */
 /* pre-seal warning tint on the OPEN slot — 3 distinct faces banked (§3.6/§9.5) */
 .slot.warn { border-color: #ff7b4a; background: rgba(255, 123, 74, 0.18); }
 
@@ -115,13 +119,10 @@
 .tile.deny { animation: tile-jiggle 220ms ease-out; }
 .tile.popping { animation: tile-pop 260ms ease-out forwards; }
 
-/* bank mini tile — portrait sprite in the square slot, height-driven */
+/* bank mini tile — fills the slot's content box (the tile cell) edge-to-edge (v0.3.7) */
 .mini {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 18%;
-  right: 18%;
+  inset: 0;
 }
 
 /* ---------- flights (cosmetic arc to the bank, 350 ms §14.2) ---------- */

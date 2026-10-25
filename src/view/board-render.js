@@ -11,6 +11,11 @@ import { faceName } from '../data/i18n.js';
 /** Per-layer vertical offset (§14.2, v0.3.4): upper layers shift UP by DY so the
  *  lower tile's baked-in bottom edge peeks out — stacks read at a glance. */
 const DY = 7;
+
+/** Per-slot in-flight registry (slotEl → flight, v0.3.7): the bank view's
+    state-first reconcile consults it so a landing never clobbers the pending
+    mini a still-flying tile will need. Shared by the board and bank views. */
+const slotFlights = new Map();
 let SPREAD = 0; // row-0 baseline shift (headroom for the tallest stack), set by fit()
 
 const imgFace = (face) => `<img src="${faceFile(face)}" alt="" aria-hidden="true" draggable="false">`;
@@ -22,9 +27,11 @@ const backFace = () => `<i class="back" aria-hidden="true"></i>`;
  *  on the level's own shape: th = min((aw·7/5)/5, (ah − 6·DY)/8). At the
  *  390×844 stage this is ≈ 52 × 72.75 design px (1.46× the v0.3.4 fit). */
 export function computeFit(areaEl, cols, rows) {
-  const pad = 5;
-  const aw = areaEl.clientWidth - pad * 2;
-  const ah = areaEl.clientHeight - pad * 2;
+  const padX = 5;
+  const padY = 2; // v0.3.7: vertical breathing 5→2 — the 80px portrait tin + 48px HUD
+  // consume the box so the height term stays exactly (ah − 4 − 42)/8 = 72.75
+  const aw = areaEl.clientWidth - padX * 2;
+  const ah = areaEl.clientHeight - padY * 2;
   const LAYERS_MAX = 7; // §6: deepest stack (band F) climbs 7 layers
   const th = clamp(Math.min((aw / SCHEMA.colsMax) * 7 / 5, (ah - (LAYERS_MAX - 1) * DY) / SCHEMA.rowsMax), 26, 84);
   return { w: th * 5 / 7, h: th };
@@ -188,7 +195,7 @@ export function createBoardView(gridEl, areaEl) {
       el.style.height = TH + 'px';
       el.style.transform = 'translate3d(0,0,0)';
       // arrive at exactly the mini's reveal scale, so the land swap is seamless (§9.5)
-      const miniBox = Math.max(20, slotEl.clientHeight - 6); // slot border (2.5×2) + .mini inset (3×2), height-driven
+      const miniBox = slotEl.clientHeight; // mini fills the slot content box = the tile cell (v0.3.7)
       const s0 = (miniBox * 0.86) / TH; // mini-land 0% keyframe scale
       el.style.transformOrigin = 'center';
       el.classList.add('flight');
@@ -203,11 +210,13 @@ export function createBoardView(gridEl, areaEl) {
         if (landed) return;
         landed = true;
         flights.delete(f);
+        slotFlights.delete(slotEl);
         // pop/serve logic resolves at landing (§3.3 tap-order ledger)
         onLanded();
         el.remove();
       };
-      const f = { cancel: () => { landed = true; el.remove(); } };
+      const f = { cancel: () => { landed = true; slotFlights.delete(slotEl); el.remove(); } };
+      slotFlights.set(slotEl, f); // v0.3.7: the bank reconcile spares in-flight slots
       flights.add(f);
       el.addEventListener('transitionend', land, { once: true });
       setTimeout(land, 380); // ≥ the 350 ms flight budget (§16)
@@ -230,6 +239,7 @@ export function createBankView(bankEl) {
   const mini = (face) => {
     const m = document.createElement('div');
     m.className = `mini`;
+    m.dataset.face = face; // v0.3.7: the reconcile matches minis to state by face
     m.innerHTML = imgFace(face);
     m.classList.add('pending'); // invisible until its flight lands
     return m;
@@ -279,6 +289,37 @@ export function createBankView(bankEl) {
         m.classList.add('landed');
         slots[i].appendChild(m);
       });
+    },
+
+    /** v0.3.7 state-first reconcile (fixes banked-tile-goes-invisible): the tin DOM
+     *  is only ever a projection of `state.bank`, re-asserted on every landing/tap.
+     *  Slots with an in-air flight keep their pending mini (its own landing resolves
+     *  them); anything else that disagrees with state (missing, wrong face, orphaned
+     *  pending, stale extra) is corrected here, so a banked tile can never be
+     *  permanently missing from the tin. */
+    reconcile(bankFaces) {
+      for (let i = 0; i < slots.length; i++) {
+        const want = bankFaces[i] ?? null;
+        const cur = slots[i].querySelector('.mini');
+        const flying = slotFlights.has(slots[i]);
+        if (want) {
+          const correct = cur && cur.dataset.face === want;
+          if (!cur || (!correct && !cur.classList.contains('popping'))) {
+            cur?.remove(); // missing or wrong face (not mid-pop) → rebuild from state
+            const m = mini(want);
+            m.classList.remove('pending');
+            m.classList.add('landed');
+            slots[i].appendChild(m);
+          } else if (correct && !flying && cur.classList.contains('pending')) {
+            // orphaned pending: its flight is gone but never revealed → self-heal
+            cur.classList.remove('pending');
+            cur.classList.add('landed');
+          }
+          // correct landed mini or an in-flight correct pending → landing resolves it
+        } else if (cur && !cur.classList.contains('popping')) {
+          cur.remove(); // stale mini for a slot the state says is empty
+        }
+      }
     },
 
     /** Pre-seal telegraph (§3.6/§9.5): when 3 DISTINCT faces are banked, the open

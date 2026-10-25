@@ -500,6 +500,7 @@ function onLanded(res, _tile, comboAtTap = 1) {
     bank.land(res.slot);
     audio.land(); // §12.1 soft "thock"
   }
+  bank.reconcile(state.bank.map((b) => b?.face)); // v0.3.7: tin = state-truth, self-healing
   bank.warnStale(state.bank.map((b) => b?.face));
 
   if (state.phase === 'failed') {

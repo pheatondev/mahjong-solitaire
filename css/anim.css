@@ -15,12 +15,12 @@
 @keyframes mini-land {
   0%   { transform: scale(0.86); }
   60%  { transform: scale(1.08); }
-  100% { transform: scale(0.78); } /* occupied slot shows mini tile at 78% (§9.5) */
+  100% { transform: scale(1); } /* occupied slot shows the mini filled edge-to-edge (v0.3.7) */
 }
 @keyframes slot-pop {
-  0%   { transform: scale(0.78) translateY(0); opacity: 1; }
+  0%   { transform: scale(1) translateY(0); opacity: 1; }
   30%  { transform: scale(1.05) translateY(-6px); opacity: 1; }
-  100% { transform: scale(0.78) translateY(8px); opacity: 0; }
+  100% { transform: scale(1) translateY(8px); opacity: 0; }
 }
 @keyframes fly-arc {
   0%   { translate: 0 0; }
@@ -48,7 +48,8 @@
 }
 
 /* Popping bank minis (emptying slots after a match) reuse slot-pop at mini scale —
-   JS toggles .popping on the .mini so the base .78 occupied scale animates away. */
+   JS toggles .popping on the .mini so the filled (scale-1) occupied state animates
+   away (v0.3.7: the pop-out no longer resets to a 0.78 miniature). */
 .mini.popping { animation: slot-pop 260ms ease-out forwards; }
 
 /* ---- M2 keyframes ---- */

@@ -25,6 +25,7 @@
 - **No JS rapid-tap guard** — fast second tap is valid input (peek→bank); zoom prevention is CSS/viewport-level only (GDD §16).
 - **Tab-hide opens no pause UI** — the rAF clock just freezes (GDD §16).
 - **Boot splash paints first** (v0.3.6): the self-contained cover in `index.html` (inline CSS, no script) fades only when `main.js` finishes loading data + Home; min 600 ms hold; boot failure keeps it with an error line. No splash at level entry — shimmer only (GDD §8.3).
+- **Tin slots are portrait 5:7** (v0.3.7): slot content box = the board-tile cell (≈52×73), sprite minis fill it edge-to-edge, landing settles at scale 1.0 (not 78%); strip is 70→80 px — that consumed the board's exact 10 px fit slack (tiles stay 72.75 px), so don't grow it further without re-verifying the fit. The tin DOM is reconciled from `state.bank` on every landing (in-flight pending minis untouched) — banked tiles never go visually missing (GDD §9.5).
 - Service worker = "dumb precache": cache-first, no `skipWaiting`/`clientsClaim`/update toast; releases bump the cache name only, and bare directory-path navigations must serve cached `index.html` (GDD §15).
 - Persistence: single `localStorage` key `mahjonglite:v1`; never mirror to IndexedDB; in-memory fallback + toast on storage failure (GDD §13).
 - All UI strings live in one `src/data/i18n.js` map (GDD §14.4).
