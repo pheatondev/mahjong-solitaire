@@ -19,6 +19,7 @@
   <style>
     #splash {
       position: fixed; inset: 0; z-index: 9999;
+      height: 100vh; height: 100lvh; /* iOS 26 fixed-layer quirk (§15) */
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
       background: linear-gradient(180deg, #ffd9e8, #ffadc6); /* bubblegum tokens (§10.2), pre-theme */
       font-family: -apple-system, "SF Pro Rounded", ui-rounded, "Segoe UI", Roboto, system-ui, sans-serif;
